@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Message } from '../types';
 import './ChatWindow.css';
 
+// XMTP Chat Window Component
+
 interface ChatWindowProps {
   messages: Message[];
   peerAddress: string;
