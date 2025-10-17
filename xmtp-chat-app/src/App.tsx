@@ -65,11 +65,11 @@ function App() {
         onCreateConversation={handleCreateConversation}
         walletAddress={walletAddress}
       />
-      {selectedConversation && xmtpDm ? (
+      {selectedConversation && xmtpDm && client && client.inboxId ? (
         <ChatWindow
           messages={messages}
           peerAddress={selectedConversation.peerAddress}
-          walletAddress={walletAddress}
+          walletAddress={client.inboxId}
           onSendMessage={sendMessage}
           isLoading={messagesLoading}
         />
