@@ -1,0 +1,22 @@
+.app {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.empty-chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  padding: 2rem;
+  text-align: center;
+}
+
+.empty-chat h2 {
+  margin-bottom: 1rem;
+  color: #646cff;
+}
