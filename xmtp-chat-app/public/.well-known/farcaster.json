@@ -1,0 +1,16 @@
+{
+  "accountAssociation": {
+    "header": "",
+    "payload": "",
+    "signature": ""
+  },
+  "frame": {
+    "version": "1",
+    "name": "XMTP Chat",
+    "iconUrl": "https://xmtp-chat-5y0ai28ak-tanguys-projects-d277c7e4.vercel.app/icon.png",
+    "splashImageUrl": "https://xmtp-chat-5y0ai28ak-tanguys-projects-d277c7e4.vercel.app/splash.png",
+    "splashBackgroundColor": "#646cff",
+    "homeUrl": "https://xmtp-chat-5y0ai28ak-tanguys-projects-d277c7e4.vercel.app",
+    "webhookUrl": "https://xmtp-chat-5y0ai28ak-tanguys-projects-d277c7e4.vercel.app/api/webhook"
+  }
+}
