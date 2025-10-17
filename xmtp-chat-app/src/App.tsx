@@ -13,15 +13,13 @@ function App() {
   const { client, walletAddress, isLoading, error, connectWallet } = useXmtp();
   const {
     conversations,
-    isLoading: conversationsLoading,
-    error: conversationsError,
     createConversation,
   } = useConversations(client);
 
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [xmtpDm, setXmtpDm] = useState<Dm | null>(null);
 
-  const { messages, isLoading: messagesLoading, sendMessage } = useMessages(xmtpDm);
+  const { messages, sendMessage } = useMessages(xmtpDm);
 
   const handleSelectConversation = async (conversation: Conversation) => {
     setSelectedConversation(conversation);
