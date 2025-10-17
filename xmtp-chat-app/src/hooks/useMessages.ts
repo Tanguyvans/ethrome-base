@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Dm } from '@xmtp/browser-sdk';
 import { Message } from '../types';
 
@@ -6,17 +6,24 @@ export const useMessages = (dm: Dm | null) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dmRef = useRef(dm);
+
+  // Keep dmRef up to date
+  useEffect(() => {
+    dmRef.current = dm;
+  }, [dm]);
 
   const loadMessages = useCallback(async () => {
-    if (!dm) return;
+    const currentDm = dmRef.current;
+    if (!currentDm) return;
 
     try {
       setIsLoading(true);
       setError(null);
 
       // Sync to get latest messages
-      await dm.sync();
-      const xmtpMessages = await dm.messages();
+      await currentDm.sync();
+      const xmtpMessages = await currentDm.messages();
 
       const messageList: Message[] = xmtpMessages.map((msg) => {
         // Handle content - it could be a string or an object with fallback
@@ -46,16 +53,17 @@ export const useMessages = (dm: Dm | null) => {
     } finally {
       setIsLoading(false);
     }
-  }, [dm]);
+  }, []);
 
   const sendMessage = useCallback(async (content: string) => {
-    if (!dm) {
+    const currentDm = dmRef.current;
+    if (!currentDm) {
       throw new Error('No conversation selected');
     }
 
     try {
       setError(null);
-      await dm.send(content);
+      await currentDm.send(content);
 
       // Reload messages after sending
       await loadMessages();
@@ -65,10 +73,11 @@ export const useMessages = (dm: Dm | null) => {
       console.error('Error sending message:', err);
       throw err;
     }
-  }, [dm, loadMessages]);
+  }, [loadMessages]);
 
   useEffect(() => {
     if (dm) {
+      setMessages([]); // Clear old messages
       loadMessages();
     }
   }, [dm, loadMessages]);

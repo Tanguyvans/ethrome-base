@@ -7,7 +7,6 @@ interface ChatWindowProps {
   peerAddress: string;
   walletAddress: string;
   onSendMessage: (content: string) => Promise<void>;
-  isLoading: boolean;
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({
@@ -15,14 +14,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   peerAddress,
   walletAddress,
   onSendMessage,
-  isLoading,
 }) => {
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
   };
 
   useEffect(() => {
@@ -62,9 +60,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       </div>
 
       <div className="messages-container">
-        {isLoading ? (
-          <p className="loading">Loading messages...</p>
-        ) : messages.length === 0 ? (
+        {messages.length === 0 ? (
           <p className="empty-state">No messages yet. Send a message to start the conversation!</p>
         ) : (
           messages.map((message) => {

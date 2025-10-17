@@ -71,7 +71,6 @@ function App() {
           peerAddress={selectedConversation.peerAddress}
           walletAddress={client.inboxId}
           onSendMessage={sendMessage}
-          isLoading={messagesLoading}
         />
       ) : (
         <div className="empty-chat">
