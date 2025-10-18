@@ -23,6 +23,8 @@ import {
 // @ts-ignore - Fal AI client types may not be available
 import { fal } from "@fal-ai/client";
 import { loadEnvFile } from "../../utils/general.js";
+// @ts-ignore - OnchainKit types may not be available
+import { useComposeCast } from "@coinbase/onchainkit/minikit";
 
 loadEnvFile();
 
@@ -31,11 +33,52 @@ fal.config({
   credentials: process.env.FAL_KEY,
 });
 
+// Simple in-memory storage for video data (in production, use a database)
+const videoStorage = new Map<string, { prompt: string; videoUrl: string; timestamp: Date }>();
+
 // Extended context type to include video generation reaction helpers
 interface VideoReactionContext extends MessageContext {
   videoReaction?: {
     removeVideoEmoji: () => Promise<void>;
   };
+}
+
+// Helper function to share mini app URLs with better UX
+async function shareMiniApp(
+  ctx: MessageContext,
+  url: string,
+  message: string
+) {
+  try {
+    await ctx.sendText(`${message}\n\n${url}`);
+    console.log(`✅ Mini app shared: ${url}`);
+  } catch (error) {
+    console.error("❌ Error sharing mini app:", error);
+    throw error;
+  }
+}
+
+// Helper function to create a shareable cast with video
+async function createShareableCast(
+  videoUrl: string,
+  prompt: string,
+  senderAddress: string
+) {
+  try {
+    // Create a shareable cast text with the video
+    const castText = `🎬 Check out this AI-generated video!\n\nPrompt: "${prompt}"\n\nCreated with @sora-video-agent\n\n#AI #Video #Sora #XMTP`;
+    
+    // In a real implementation, you would use the OnchainKit composeCast here
+    // For now, we'll return the data that would be used for casting
+    return {
+      text: castText,
+      embeds: [videoUrl],
+      mentions: [senderAddress]
+    };
+  } catch (error) {
+    console.error("❌ Error creating shareable cast:", error);
+    throw error;
+  }
 }
 
 const agent = await Agent.createFromEnv({
@@ -75,50 +118,18 @@ agent.use(async (ctx, next) => {
   }
 });
 
-// Register action handlers
-registerAction("generate-video", async (ctx) => {
-  const senderAddress = await ctx.getSenderAddress();
-  console.log(`🎬 Generate video button clicked by: ${senderAddress}`);
-
-  try {
-    // Show prompt input interface
-    await ActionBuilder.create(
-      "video-prompt-input",
-      `🎬 **Generate Your Video**
-
-Type your video description below and I'll create an amazing video for you!
-
-**Examples:**
-• A cat playing with a ball of yarn
-• A futuristic city with flying cars
-• A chef preparing a gourmet meal
-• A robot dancing in a futuristic city
-
-Just type your description and I'll handle the rest! 🎥`,
-    )
-      .add("back-to-main", "← Back to Main Menu", "secondary")
-      .send(ctx);
-    console.log("✅ Generate video response sent successfully");
-  } catch (error) {
-    console.error("❌ Error in generate-video handler:", error);
-    await ctx.sendText("❌ Sorry, there was an error. Please try again.");
-  }
-});
 
 registerAction("leaderboard", async (ctx) => {
   const senderAddress = await ctx.getSenderAddress();
   console.log(`🏆 Leaderboard button clicked by: ${senderAddress}`);
 
   try {
-    // Open leaderboard URL
-    await ctx.sendText(
-      `🏆 **Opening Leaderboard**
-
-[Click here to view the leaderboard](fake-link)
-
-See the most popular videos and vote for your favorites! 🏆`,
+    await shareMiniApp(
+      ctx,
+      "https://new-mini-app-quickstart-pi-nine.vercel.app/leaderboard",
+      "🏆 **Leaderboard** - Check the leaderboard here!"
     );
-    console.log("✅ Leaderboard response sent successfully");
+    console.log("✅ Leaderboard shared successfully");
   } catch (error) {
     console.error("❌ Error in leaderboard handler:", error);
     await ctx.sendText("❌ Sorry, there was an error opening the leaderboard. Please try again.");
@@ -130,112 +141,90 @@ registerAction("video-feed", async (ctx) => {
   console.log(`📺 Video feed button clicked by: ${senderAddress}`);
 
   try {
-    // Open video feed URL
-    await ctx.sendText(
-      `📺 **Opening Video Feed**
-
-[Click here to browse all videos](fake-link)
-
-Discover amazing videos created by the community! 🎬`,
+    await shareMiniApp(
+      ctx,
+      "https://new-mini-app-quickstart-pi-nine.vercel.app/",
+      "📺 **Video Feed** - Browse all videos here!"
     );
-    console.log("✅ Video feed response sent successfully");
+    console.log("✅ Video feed shared successfully");
   } catch (error) {
     console.error("❌ Error in video-feed handler:", error);
     await ctx.sendText("❌ Sorry, there was an error opening the video feed. Please try again.");
   }
 });
 
-registerAction("examples", async (ctx) => {
-  await ctx.sendText(`🎬 Here are some great video prompts to try:
 
-• "@sora A dramatic Hollywood breakup scene at dusk on a quiet suburban street"
-• "@sora A futuristic city with flying cars and neon lights"
-• "@sora A peaceful forest with sunlight filtering through the trees"
-• "@sora A chef preparing a gourmet meal in a modern kitchen"
-• "@sora A robot dancing in a futuristic city"
 
-Just copy any of these and send them to me!`);
-});
 
-registerAction("settings", async (ctx) => {
-  await ctx.sendText(`⚙️ Video Settings:
-
-• Resolution: 720p
-• Aspect Ratio: 16:9
-• Duration: 4 seconds
-• Format: MP4
-
-These settings are optimized for the best quality and performance!`);
-});
-
-registerAction("help", async (ctx) => {
-  const senderAddress = await ctx.getSenderAddress();
-  console.log(`ℹ️ More info button clicked by: ${senderAddress}`);
-
-  try {
-    await ctx.sendText(`ℹ️ **About Sora Video Generator**
-
-🎬 **What is this?**
-I'm an AI agent that generates amazing videos using OpenAI's Sora 2 model! You can create 4-second videos from simple text descriptions.
-
-💬 **How to use:**
-• **In any chat**: Just type \`@sora your description\` and I'll generate a video
-• **Group chats**: Works perfectly! Everyone can see and enjoy the videos
-• **Private chats**: Create videos just for you
-
-🏆 **Community Features:**
-• **Leaderboard**: See the most popular videos voted by the community
-• **Video Feed**: Browse all videos created by users
-• **Likes & Voting**: Rate videos to help the best ones rise to the top
-
-🎥 **Video Specs:**
-• Resolution: 720p HD
-• Duration: 4 seconds
-• Format: MP4
-• Aspect Ratio: 16:9
-
-✨ **Perfect for:**
-• Creative projects
-• Social media content
-• Group entertainment
-• Brainstorming ideas
-• Having fun with friends!
-
-Ready to create something amazing? Just type \`@sora your idea\` and let's go! 🚀`);
-    console.log("✅ Help response sent successfully");
-  } catch (error) {
-    console.error("❌ Error in help handler:", error);
-    await ctx.sendText("❌ Sorry, there was an error. Please try again.");
-  }
-});
 
 registerAction("back-to-main", async (ctx) => {
   await showMainMenu(ctx);
 });
 
-// Add a simple test action for debugging
-registerAction("test-action", async (ctx) => {
-  console.log("🧪 Test action clicked!");
-  await ctx.sendText("🧪 Test action working! The button system is functioning correctly.");
+registerAction("share-video", async (ctx) => {
+  const senderAddress = await ctx.getSenderAddress();
+  console.log(`📤 Share video button clicked by: ${senderAddress}`);
+
+  try {
+    if (!senderAddress) {
+      await ctx.sendText("❌ Unable to identify sender. Please try again.");
+      return;
+    }
+
+    // Find the most recent video for this user
+    let latestVideo = null;
+    let latestKey = "";
+    
+    for (const [key, videoData] of videoStorage.entries()) {
+      if (key.startsWith(senderAddress)) {
+        if (!latestVideo || videoData.timestamp > latestVideo.timestamp) {
+          latestVideo = videoData;
+          latestKey = key;
+        }
+      }
+    }
+    
+    if (!latestVideo) {
+      await ctx.sendText("❌ No video found to share. Please generate a video first using @sora your description");
+      return;
+    }
+    
+    console.log(`📤 Sharing video for ${senderAddress}: "${latestVideo.prompt}" - ${latestVideo.videoUrl}`);
+    
+    // Create shareable cast data
+    const castData = await createShareableCast(latestVideo.videoUrl, latestVideo.prompt, senderAddress);
+    
+    // Send the shareable content with instructions
+    await ctx.sendText(
+      `📤 **Ready to Share!**\n\n` +
+      `Here's your shareable content:\n\n` +
+      `**Text:**\n${castData.text}\n\n` +
+      `**Video:** ${latestVideo.videoUrl}\n\n` +
+      `Copy the text above and share it on your social feed with the video link! ` +
+      `Or use the mini app below for an easier sharing experience.`
+    );
+    
+    // Also provide the mini app option
+    await shareMiniApp(
+      ctx,
+      `https://new-mini-app-quickstart-pi-nine.vercel.app/share?video=${encodeURIComponent(latestVideo.videoUrl)}&text=${encodeURIComponent(castData.text)}`,
+      `🚀 **Easy Share** - Use this mini app to share directly to your feed!`
+    );
+    
+    console.log("✅ Video share interface opened successfully");
+  } catch (error) {
+    console.error("❌ Error in share-video handler:", error);
+    await ctx.sendText("❌ Sorry, there was an error opening the share interface. Please try again.");
+  }
 });
 
-// Add a test for intent handling
-registerAction("test-intent", async (ctx) => {
-  console.log("🎯 Test intent action clicked!");
-  await ctx.sendText("🎯 Intent handling working! Button clicks are being processed correctly.");
-});
 
 // Log all registered actions for debugging
 console.log("🎯 Registered actions:", [
-  "generate-video",
   "leaderboard",
   "video-feed",
-  "examples",
-  "settings",
-  "help",
   "back-to-main",
-  "test-action",
-  "test-intent"
+  "share-video"
 ]);
 
 // Helper function to show the main menu
@@ -246,19 +235,14 @@ async function showMainMenu(ctx: MessageContext) {
       "main-menu",
       `👋 Welcome to Sora Video Generator!
 
-🎬 Create amazing videos with AI in any chat!
-📱 Works in group chats, private chats, and DMs
+🎬 To create videos, just type: **@sora your description**
+📱 Works in any chat - group chats, private chats, and DMs
 🏆 Community features with leaderboards and voting
 
-✨ Choose an action below to get started:`,
+✨ Choose an action below:`,
     )
-      .add("generate-video", "🎬 Generate Video", "primary")
       .add("leaderboard", "🏆 Leaderboard", "primary")
       .add("video-feed", "📺 Video Feed", "primary")
-      .add("test-action", "🧪 Test Button", "secondary")
-      .add("examples", "💡 See Examples", "secondary")
-      .add("settings", "⚙️ Video Settings", "secondary")
-      .add("help", "ℹ️ More Info", "secondary")
       .send(ctx);
     console.log("Main menu sent successfully");
   } catch (error) {
@@ -302,14 +286,15 @@ agent.on("text", async (ctx) => {
       }
     }
 
-    if (messageContent.toLowerCase().includes("test")) {
-      console.log("🔄 Fallback: Handling test-action via text");
-      const handler = getActionHandler("test-action");
+    if (messageContent.toLowerCase().includes("share")) {
+      console.log("🔄 Fallback: Handling share action via text");
+      const handler = getActionHandler("share-video");
       if (handler) {
         await handler(ctx);
         return;
       }
     }
+
 
     // Check if the message is asking for video generation
     if (
@@ -354,9 +339,25 @@ agent.on("text", async (ctx) => {
       // TODO: Add database logic here to save video request
       // Example: await saveVideoRequest(senderAddress, prompt, timestamp);
 
-      await ctx.sendText(
-        `🎬 I received your video request: "${prompt}"\n\nFor now, I'm in testing mode. When ready, I'll generate real videos using Sora 2!`,
-      );
+      // Send example video for testing with share button
+      const videoUrl = "https://v3b.fal.media/files/b/tiger/49AK4V5zO6RkFNfI-wiHc_ype2StUS.mp4";
+      
+      // Store the prompt and video URL for sharing
+      const storageKey = `${senderAddress}-${Date.now()}`;
+      videoStorage.set(storageKey, {
+        prompt,
+        videoUrl,
+        timestamp: new Date()
+      });
+      console.log(`📝 Stored video data for sharing - Key: ${storageKey}, Prompt: "${prompt}", Video: ${videoUrl}`);
+      
+      await ActionBuilder.create(
+        "video-generated",
+        `🎬 I received your video request: "${prompt}"\n\nHere's an example of what your video will look like:\n\n${videoUrl}`,
+      )
+        .add("share-video", "📤 Share to Feed", "primary")
+        .add("back-to-main", "🏠 Main Menu", "secondary")
+        .send(ctx);
 
       // Remove video emoji after responding
       if (videoCtx.videoReaction?.removeVideoEmoji) {
@@ -375,11 +376,11 @@ agent.on("text", async (ctx) => {
         console.error("Error showing main menu:", menuError);
         // Fallback to simple text response
         await ctx.sendText(
-          `🎬 Hi! I'm the Sora Video Generator agent.\n\nTo generate a video, mention me with @sora or say "generate video" followed by your description.\n\nExamples:\n• "@sora A cat playing with a ball of yarn"\n• "Generate video: A sunset over the ocean"\n• "Create video: A robot dancing in a futuristic city"`,
+          `🎬 Hi! I'm the Sora Video Generator agent.\n\nTo generate a video, just type: **@sora your description**\n\nExamples:\n• @sora A cat playing with a ball of yarn\n• @sora A sunset over the ocean\n• @sora A robot dancing in a futuristic city`,
         );
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error generating video:", error);
 
     let errorMessage =
