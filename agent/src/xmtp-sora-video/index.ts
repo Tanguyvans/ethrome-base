@@ -38,6 +38,9 @@ interface VideoReactionContext extends MessageContext {
   };
 }
 
+// Store video URLs per conversation for sharing
+const conversationVideoUrls = new Map<string, { url: string; prompt: string }>();
+
 // Helper function to share mini app URLs with better UX
 async function shareMiniApp(
   ctx: MessageContext,
@@ -130,15 +133,28 @@ registerAction("share-video", async (ctx) => {
   console.log(`📤 Share video button clicked by: ${senderAddress}`);
 
   try {
-    // Simple share URL - you can customize this for your Coinbase app
-    const shareUrl = "https://your-coinbase-app.com/share";
+    // Get the stored video URL for this conversation
+    const conversationId = ctx.conversation.id;
+    const videoData = conversationVideoUrls.get(conversationId);
+
+    if (!videoData) {
+      await ctx.sendText("❌ Sorry, I couldn't find the video URL. Please try generating a new video.");
+      return;
+    }
+
+    // Encode the video URL and prompt for the mini app
+    const encodedVideoUrl = encodeURIComponent(videoData.url);
+    const encodedPrompt = encodeURIComponent(videoData.prompt);
+
+    // Build the share URL with video data (using 'url' param to match mini app)
+    const shareUrl = `https://new-mini-app-quickstart-pi-nine.vercel.app/post-video?url=${encodedVideoUrl}&text=${encodedPrompt}`;
 
     await shareMiniApp(
       ctx,
       shareUrl,
-      "📤 **Share to Feed** - Share this video with your followers!"
+      "📤 **Share to Feed** - Opening compose dialog..."
     );
-    console.log("✅ Video share mini app opened successfully");
+    console.log(`✅ Opening compose dialog with video: ${videoData.url}`);
   } catch (error) {
     console.error("❌ Error in share-video handler:", error);
     await ctx.sendText("❌ Sorry, there was an error opening the share feature. Please try again.");
@@ -266,9 +282,16 @@ agent.on("text", async (ctx) => {
       // Example: await saveVideoRequest(senderAddress, prompt, timestamp);
 
       // Send example video for testing
+      const videoUrl = "https://v3b.fal.media/files/b/tiger/49AK4V5zO6RkFNfI-wiHc_ype2StUS.mp4";
+
       await ctx.sendText(
-        `🎬 I received your video request: "${prompt}"\n\nHere's an example of what your video will look like:\n\nhttps://v3b.fal.media/files/b/tiger/49AK4V5zO6RkFNfI-wiHc_ype2StUS.mp4`,
+        `🎬 I received your video request: "${prompt}"\n\nHere's an example of what your video will look like:\n\n${videoUrl}`,
       );
+
+      // Store the video URL for this conversation so it can be shared later
+      const conversationId = ctx.conversation.id;
+      conversationVideoUrls.set(conversationId, { url: videoUrl, prompt });
+      console.log(`💾 Stored video URL for conversation ${conversationId}`);
 
       // Add share button after video generation
       await ActionBuilder.create(
