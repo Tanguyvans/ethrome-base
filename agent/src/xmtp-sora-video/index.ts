@@ -101,7 +101,7 @@ function consumePayment(senderAddress: string) {
 async function requestVideoPayment(ctx: MessageContext, prompt: string) {
   const senderAddress = await ctx.getSenderAddress();
   if (!senderAddress) {
-    await ctx.sendText("❌ Could not determine your wallet address.");
+    await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
     return;
   }
 
@@ -129,9 +129,10 @@ async function requestVideoPayment(ctx: MessageContext, prompt: string) {
   console.log("Wallet send calls created:", JSON.stringify(walletSendCalls, null, 2));
 
   await ctx.sendText(
-    `🎬 **Video: "${prompt}"**\n\n` +
-    `💰 **Fee**: ${VIDEO_GENERATION_FEE} USDC per video\n\n` +
-    `Approve the transaction in your wallet to generate!`
+    `🎬 **Creating Your Video**\n\n` +
+    `✨ **"${prompt}"**\n\n` +
+    `💰 **Cost**: ${VIDEO_GENERATION_FEE} USDC\n\n` +
+    `🔐 **Approve the transaction in your wallet to start generating!**`
   );
 
   // Send the transaction request
@@ -139,7 +140,7 @@ async function requestVideoPayment(ctx: MessageContext, prompt: string) {
 
   // Send follow-up instructions
   await ctx.sendText(
-    `💡 After payment, I'll automatically generate your video!`
+    `💡 **After payment, your video will be generated automatically!**`
   );
 }
 
@@ -193,9 +194,9 @@ const transactionReferenceMiddleware: AgentMiddleware = async (ctx, next) => {
         console.log(`✅ Video generation payment confirmed for ${senderAddress}`);
 
         await ctx.sendText(
-          `✅ **Payment Confirmed!**\n` +
-          `💰 ${VIDEO_GENERATION_FEE} USDC\n\n` +
-          `🎬 Ready to generate video!`
+          `🎉 **Payment Successful!**\n\n` +
+          `✅ ${VIDEO_GENERATION_FEE} USDC received\n` +
+          `🎬 Starting video generation...`
         );
 
         // If there's a pending video request, automatically generate it
@@ -215,25 +216,26 @@ const transactionReferenceMiddleware: AgentMiddleware = async (ctx, next) => {
 
           // Generate the video
           await ctx.sendText(
-            `🎬 **Generating video...**\n` +
-            `📝 "${pendingVideoRequest}"\n\n` +
-            `⏳ Please wait...`
+            `🎬 **Generating Your Video**\n\n` +
+            `✨ **"${pendingVideoRequest}"**\n\n` +
+            `⏳ **Please wait while we create your masterpiece...**`
           );
 
           // Send example video for testing (replace with actual generation)
           await ctx.sendText(
-            `🎬 **Video Ready!**\n\n` +
-            `📝 "${pendingVideoRequest}"\n` +
-            `🔗 https://v3b.fal.media/files/b/tiger/49AK4V5zO6RkFNfI-wiHc_ype2StUS.mp4\n\n` +
-            `✨ Thank you!`
+            `🎉 **Your Video is Ready!**\n\n` +
+            `✨ **"${pendingVideoRequest}"**\n\n` +
+            `🎥 **Watch your video:**\n` +
+            `https://v3b.fal.media/files/b/tiger/49AK4V5zO6RkFNfI-wiHc_ype2StUS.mp4\n\n` +
+            `🙏 **Thank you for using Sora Video Generator!**`
           );
 
           // Add share button after video generation
           await ActionBuilder.create(
             "video-share-menu",
-            "✨ Share your video:"
+            "🚀 **Share your amazing video!**"
           )
-            .add("share-video", "📤 Share", "primary")
+            .add("share-video", "📤 Share Video", "primary")
             .send(ctx);
 
           // Consume the payment after video generation
@@ -241,16 +243,18 @@ const transactionReferenceMiddleware: AgentMiddleware = async (ctx, next) => {
         } else {
           // No specific video request, but user paid - offer to generate a video
           await ctx.sendText(
-            `🎬 **Ready to generate video!**\n\n` +
-            `✅ Payment confirmed\n\n` +
-            `Type **@sora your description** to create video!`
+            `🎉 **Payment Successful!**\n\n` +
+            `✅ ${VIDEO_GENERATION_FEE} USDC received\n\n` +
+            `🎬 **Ready to create!** Type \`@sora your idea\` to generate a video!`
           );
         }
       }
     } else {
       // Regular transaction confirmation
       await ctx.sendText(
-        `✅ Transaction confirmed!`,
+        `🎉 **Transaction Confirmed!**\n\n` +
+        `✅ Payment received successfully\n\n` +
+        `🎬 **Ready to create!** Type \`@sora your idea\` to generate a video!`
       );
     }
 
@@ -378,15 +382,20 @@ registerAction("check-balance", async (ctx) => {
 
   try {
     if (!senderAddress) {
-      await ctx.sendText("❌ Could not determine your wallet address.");
+      await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
       return;
     }
     const balance = await usdcHandler.getUSDCBalance(senderAddress);
-    await ctx.sendText(`💰 **Balance**: ${balance} USDC`);
+    await ctx.sendText(
+      `💰 **Your USDC Balance**\n\n` +
+      `💵 **${balance} USDC**\n\n` +
+      `💡 Each video costs ${VIDEO_GENERATION_FEE} USDC\n` +
+      `🎬 Type \`@sora your idea\` to create videos!`
+    );
     console.log(`✅ Balance check completed for ${senderAddress}: ${balance} USDC`);
   } catch (error) {
     console.error("❌ Error checking balance:", error);
-    await ctx.sendText("❌ Sorry, there was an error checking your balance. Please try again.");
+    await ctx.sendText("❌ **Oops!** There was an error checking your balance. Please try again.");
   }
 });
 
@@ -397,7 +406,7 @@ registerAction("check-payment-status", async (ctx) => {
 
   try {
     if (!senderAddress) {
-      await ctx.sendText("❌ Could not determine your wallet address.");
+      await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
       return;
     }
 
@@ -431,7 +440,7 @@ registerAction("generate-video-now", async (ctx) => {
 
   try {
     if (!senderAddress) {
-      await ctx.sendText("❌ Could not determine your wallet address.");
+      await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
       return;
     }
 
@@ -466,7 +475,7 @@ registerAction("payment-menu", async (ctx) => {
 
   try {
     if (!senderAddress) {
-      await ctx.sendText("❌ Could not determine your wallet address.");
+      await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
       return;
     }
 
@@ -478,7 +487,7 @@ registerAction("payment-menu", async (ctx) => {
     console.log(`✅ Balance check sent to ${senderAddress}`);
   } catch (error) {
     console.error("❌ Error in payment-menu handler:", error);
-    await ctx.sendText("❌ Sorry, there was an error checking your balance. Please try again.");
+    await ctx.sendText("❌ **Oops!** There was an error checking your balance. Please try again.");
   }
 });
 
@@ -503,12 +512,15 @@ async function showMainMenu(ctx: MessageContext) {
       "main-menu",
       `🎬 **Sora Video Generator**
 
-Type **@sora your description** to create videos
-💰 **Fee**: ${VIDEO_GENERATION_FEE} USDC per video`,
+✨ Create amazing videos with AI
+💰 Only ${VIDEO_GENERATION_FEE} USDC per video
+
+**How to use:**
+Type \`@sora your idea\` to get started!`,
     )
       .add("leaderboard", "🏆 Leaderboard", "primary")
       .add("video-feed", "📺 Video Feed", "primary")
-      .add("payment-menu", "💰 Check Balance", "secondary")
+      .add("payment-menu", "💰 My Balance", "secondary")
       .send(ctx);
     console.log("Main menu sent successfully");
   } catch (error) {
@@ -587,7 +599,7 @@ agent.on("text", async (ctx) => {
       const senderAddress = await ctx.getSenderAddress();
 
       if (!senderAddress) {
-        await ctx.sendText("❌ Could not determine your wallet address.");
+        await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
         return;
       }
 
@@ -619,7 +631,7 @@ agent.on("text", async (ctx) => {
       const senderAddress = await ctx.getSenderAddress();
 
       if (!senderAddress) {
-        await ctx.sendText("❌ Could not determine your wallet address.");
+        await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
         return;
       }
 
@@ -636,13 +648,13 @@ agent.on("text", async (ctx) => {
           `💰 **Agent USDC Balance**: ${agentUsdcBalance} USDC\n\n` +
           `💸 **Required Fee**: ${VIDEO_GENERATION_FEE} USDC\n` +
           `⛽ **Note**: You also need ETH for gas fees!\n\n` +
-          `💡 **Troubleshooting**:\n` +
+          `💡 **Troubleshooting Tips**:\n` +
           `• Make sure you have at least 0.001 USDC\n` +
           `• Make sure you have some ETH for gas\n` +
-          `• Try using /tx 0.001 to test payment`
+          `• Try using \`/tx 0.001\` to test payment`
         );
       } catch (error) {
-        await ctx.sendText(`❌ Error checking balances: ${error}`);
+        await ctx.sendText(`❌ **Oops!** Error checking balances: ${error}`);
       }
       return;
     }
@@ -653,7 +665,7 @@ agent.on("text", async (ctx) => {
       const senderAddress = await ctx.getSenderAddress();
 
       if (!senderAddress) {
-        await ctx.sendText("❌ Could not determine your wallet address.");
+        await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
         return;
       }
 
@@ -679,9 +691,9 @@ agent.on("text", async (ctx) => {
       // Add share button after video generation
       await ActionBuilder.create(
         "video-share-menu",
-        "✨ Your video is ready! Share it with your followers:"
+        "🚀 **Share your amazing video!**"
       )
-        .add("share-video", "📤 Share to Feed", "primary")
+        .add("share-video", "📤 Share Video", "primary")
         .send(ctx);
 
       return;
@@ -693,7 +705,7 @@ agent.on("text", async (ctx) => {
       const senderAddress = await ctx.getSenderAddress();
 
       if (!senderAddress) {
-        await ctx.sendText("❌ Could not determine your wallet address.");
+        await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
         return;
       }
 
@@ -730,9 +742,9 @@ agent.on("text", async (ctx) => {
       // Add share button after video generation
       await ActionBuilder.create(
         "video-share-menu",
-        "✨ Your video is ready! Share it with your followers:"
+        "🚀 **Share your amazing video!**"
       )
-        .add("share-video", "📤 Share to Feed", "primary")
+        .add("share-video", "📤 Share Video", "primary")
         .send(ctx);
 
       return;
@@ -745,7 +757,7 @@ agent.on("text", async (ctx) => {
       const senderAddress = await ctx.getSenderAddress();
 
       if (!senderAddress) {
-        await ctx.sendText("❌ Could not determine your wallet address.");
+        await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
         return;
       }
 
@@ -813,7 +825,7 @@ agent.on("text", async (ctx) => {
 
       // Check if user has paid for video generation
       if (!senderAddress) {
-        await ctx.sendText("❌ Could not determine your wallet address.");
+        await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
         if (videoCtx.videoReaction?.removeVideoEmoji) {
           await videoCtx.videoReaction.removeVideoEmoji();
         }
@@ -840,10 +852,9 @@ agent.on("text", async (ctx) => {
 
       // Send response immediately
       await ctx.sendText(
-        `🎬 **Generating your video...**\n\n` +
-        `📝 **Prompt**: "${prompt}"\n` +
-        `💰 **Payment**: ✅ Confirmed (${VIDEO_GENERATION_FEE} USDC)\n\n` +
-        `⏳ This may take a few minutes...`
+        `🎬 **Generating Your Video**\n\n` +
+        `✨ **"${prompt}"**\n\n` +
+        `⏳ **Please wait while we create your masterpiece...**`
       );
 
       // TODO: Add database logic here to save video request
@@ -851,18 +862,19 @@ agent.on("text", async (ctx) => {
 
       // Send example video for testing (replace with actual generation)
       await ctx.sendText(
-        `🎬 **Your video is ready!**\n\n` +
-        `📝 **Prompt**: "${prompt}"\n` +
-        `🔗 **Video**: https://v3b.fal.media/files/b/tiger/49AK4V5zO6RkFNfI-wiHc_ype2StUS.mp4\n\n` +
-        `✨ **Thank you for your payment!**`
+        `🎉 **Your Video is Ready!**\n\n` +
+        `✨ **"${prompt}"**\n\n` +
+        `🎥 **Watch your video:**\n` +
+        `https://v3b.fal.media/files/b/tiger/49AK4V5zO6RkFNfI-wiHc_ype2StUS.mp4\n\n` +
+        `🙏 **Thank you for using Sora Video Generator!**`
       );
 
       // Add share button after video generation
       await ActionBuilder.create(
         "video-share-menu",
-        "✨ Your video is ready! Share it with your followers:"
+        "🚀 **Share your amazing video!**"
       )
-        .add("share-video", "📤 Share to Feed", "primary")
+        .add("share-video", "📤 Share Video", "primary")
         .send(ctx);
 
       // Remove video emoji after responding
@@ -883,8 +895,10 @@ agent.on("text", async (ctx) => {
         // Fallback to simple text response
         await ctx.sendText(
           `🎬 **Sora Video Generator**\n\n` +
-          `Type **@sora your description** to create videos\n` +
-          `💰 **Fee**: ${VIDEO_GENERATION_FEE} USDC per video\n\n` +
+          `✨ Create amazing videos with AI\n` +
+          `💰 Only ${VIDEO_GENERATION_FEE} USDC per video\n\n` +
+          `**How to use:**\n` +
+          `Type \`@sora your idea\` to get started!\n\n` +
           `**Examples:**\n` +
           `• @sora A cat playing with yarn\n` +
           `• @sora A sunset over the ocean\n` +
