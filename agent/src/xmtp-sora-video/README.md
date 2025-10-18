@@ -11,6 +11,10 @@ An XMTP agent that generates videos using OpenAI's Sora 2 model via the Fal AI A
 - 🎭 Visual reaction emojis (🎬) that appear during processing
 - 🏆 Leaderboard and video feed integration (miniapp ready)
 - 💡 Built-in example prompts and settings
+- 💳 USDC payment support with transaction handling
+- 💰 Balance checking and transaction confirmation
+- 🎬 **Pay-per-video**: 0.001 USDC fee required for each video generation
+- ⏰ **Time-based access**: Payment valid for 1 hour, allowing multiple videos
 
 ## Setup
 
@@ -41,6 +45,9 @@ XMTP_DB_ENCRYPTION_KEY=your_encryption_key_here
 
 # Fal AI API Key (get from https://fal.ai)
 FAL_KEY=your_fal_api_key_here
+
+# Network for USDC transactions (base-sepolia or base-mainnet)
+NETWORK_ID=base-sepolia
 ```
 
 **Note**: For testing purposes, the actual video generation is currently commented out to avoid API costs. The agent will show a mock response instead.
@@ -66,19 +73,34 @@ When you start a conversation, you'll see a welcome message with interactive but
 - **🎬 Generate Video** - Instructions for video generation
 - **🏆 Leaderboard** - Opens leaderboard in miniapp
 - **📺 Video Feed** - Opens video feed in miniapp
-- **💡 See Examples** - Shows example prompts
-- **⚙️ Video Settings** - Displays current settings
-- **ℹ️ More Info** - Shows help information
+- **💳 Payments** - Access payment options and balance checking
 
 ### Generate a Video
 
-Mention the agent with `@sora` followed by your video description:
+**Payment Required**: Each video generation requires a **0.001 USDC** payment (valid for 1 hour).
+
+#### First Time Users
+
+1. **Request a video**:
+   ```
+   @sora A cat playing with a ball of yarn
+   ```
+
+2. **Pay the fee**: The agent will request payment via transaction
+3. **Confirm payment**: Send the transaction reference
+4. **Video auto-generates**: Your video is automatically created after payment!
+5. **Generate more videos**: You can create additional videos for 1 hour!
+
+#### Returning Users
+
+If you've paid recently (within 1 hour), simply request videos:
 
 ```
-@sora A cat playing with a ball of yarn
+@sora A sunset over the ocean
+@sora A robot dancing in a futuristic city
 ```
 
-Or use alternative phrases:
+#### Alternative Phrases
 
 ```
 Generate video: A sunset over the ocean
@@ -91,6 +113,32 @@ Create video: A robot dancing in a futuristic city
 - `@sora A futuristic city with flying cars and neon lights`
 - `@sora A peaceful forest with sunlight filtering through the trees`
 - `@sora A chef preparing a gourmet meal in a modern kitchen`
+
+### Payment Commands
+
+The agent supports USDC payments on Base network:
+
+#### Text Commands
+
+- `/status` - Check your payment status and time remaining
+- `/balance` - Check your USDC balance
+- `/tx <amount>` - Send USDC to the agent (e.g., `/tx 0.001`)
+
+#### Interactive Payment Menu
+
+Click the **💳 Payments** button to access:
+- **🔍 Check Status** - View your payment status and time remaining
+- **💰 Check Balance** - View your current USDC balance
+- **💸 Send Payment** - Get instructions for sending USDC
+- **🔙 Back to Main Menu** - Return to the main menu
+
+#### Transaction Flow
+
+1. Use `/tx <amount>` to initiate a payment
+2. The agent will create a transaction request
+3. Approve the transaction in your wallet
+4. Send a transaction reference to confirm completion
+5. The agent will acknowledge the successful payment
 
 ## Video Specifications
 
