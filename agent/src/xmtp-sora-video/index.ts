@@ -355,14 +355,14 @@ const transactionReferenceMiddleware: AgentMiddleware = async (ctx, next) => {
         } else {
           // No specific video request, but user paid - offer to generate a video
         await ctx.sendText(
-          `🎉 Payment successful! Ready to create videos - type @clipchain your idea!`
+          `🎉 Payment successful! Ready to create videos - type @clipchain.base.eth your idea!`
         );
         }
       }
     } else {
       // Regular transaction confirmation
       await ctx.sendText(
-        `🎉 Transaction confirmed! Ready to create videos - type @clipchain your idea!`
+        `🎉 Transaction confirmed! Ready to create videos - type @clipchain.base.eth your idea!`
       );
     }
 
@@ -516,7 +516,7 @@ registerAction("check-balance", async (ctx) => {
       `💰 Your USDC Balance\n\n` +
       `💵 ${balance} USDC\n\n` +
       `💡 Each video costs ${VIDEO_GENERATION_FEE} USDC\n` +
-      `🎬 Type @clipchain your idea to create videos!`
+      `🎬 Type @clipchain.base.eth your idea to create videos!`
     );
     console.log(`✅ Balance check completed for ${senderAddress}: ${balance} USDC`);
   } catch (error) {
@@ -544,13 +544,13 @@ registerAction("check-payment-status", async (ctx) => {
       await ctx.sendText(
         `✅ Payment Active\n` +
         `💰 ${payment.amount} USDC • ⏰ ${timeLeft}m left\n\n` +
-        `Type @clipchain your description to create videos!`
+        `Type @clipchain.base.eth your description to create videos!`
       );
     } else {
       await ctx.sendText(
         `❌ Payment Required\n` +
         `💰 ${VIDEO_GENERATION_FEE} USDC per video (1 hour)\n\n` +
-        `Type @clipchain your description to pay and generate!`
+        `Type @clipchain.base.eth your description to pay and generate!`
       );
     }
     console.log(`✅ Payment status check completed for ${senderAddress}: ${hasPaid ? 'PAID' : 'NOT PAID'}`);
@@ -585,7 +585,7 @@ registerAction("generate-video-now", async (ctx) => {
     await ctx.sendText(
       `🎬 Ready to generate videos!\n\n` +
       `✅ Payment confirmed • ⏰ 1 hour valid\n\n` +
-      `Type @clipchain your description to create videos!`
+      `Type @clipchain.base.eth your description to create videos!`
     );
 
     console.log(`✅ Video generation prompt sent to ${senderAddress}`);
@@ -642,7 +642,7 @@ async function showMainMenu(ctx: MessageContext) {
 💰 Only ${VIDEO_GENERATION_FEE} USDC per video
 
 How to use:
-Type @clipchain your idea to generate videos`,
+Type @clipchain.base.eth your idea to generate videos`,
     )
       .add("leaderboard", "🏆 Leaderboard", "primary")
       .add("video-feed", "📺 Video Feed", "primary")
@@ -735,7 +735,7 @@ agent.on("text", async (ctx) => {
         await ctx.sendText(
           `❌ Payment Required\n\n` +
           `You need to pay ${VIDEO_GENERATION_FEE} USDC first to generate videos.\n\n` +
-          `Use /tx ${VIDEO_GENERATION_FEE} to pay, or type @clipchain your description to start the payment flow.`
+          `Use /tx ${VIDEO_GENERATION_FEE} to pay, or type @clipchain.base.eth your description to start the payment flow.`
         );
         return;
       }
@@ -958,6 +958,7 @@ agent.on("text", async (ctx) => {
     if (
       messageContent.toLowerCase().includes("@clipchain") ||
       messageContent.toLowerCase().includes("@clipchaintest") ||
+      messageContent.toLowerCase().includes("@clipchain.base.eth") ||
       messageContent.toLowerCase().includes("generate video") ||
       messageContent.toLowerCase().includes("create video")
     ) {
@@ -982,12 +983,13 @@ agent.on("text", async (ctx) => {
       // Remove common trigger words to get the actual prompt
       prompt = prompt.replace(/@clipchain/gi, "").trim();
       prompt = prompt.replace(/@clipchaintest/gi, "").trim();
+      prompt = prompt.replace(/@clipchain\.base\.eth/gi, "").trim();
       prompt = prompt.replace(/generate video/gi, "").trim();
       prompt = prompt.replace(/create video/gi, "").trim();
 
       if (!prompt) {
         await ctx.sendText(
-          "Please provide a description for the video you want me to generate.\n\nExample: @clipchain A cat playing with a ball of yarn",
+          "Please provide a description for the video you want me to generate.\n\nExample: @clipchain.base.eth A cat playing with a ball of yarn",
         );
         // Remove video emoji for invalid request
         if (videoCtx.videoReaction?.removeVideoEmoji) {
@@ -1124,11 +1126,11 @@ agent.on("text", async (ctx) => {
           `✨ Create amazing videos with AI\n` +
           `💰 Only ${VIDEO_GENERATION_FEE} USDC per video\n\n` +
           `How to use:\n` +
-          `Type @clipchain your idea to generate videos\n\n` +
+          `Type @clipchain.base.eth your idea to generate videos\n\n` +
           `Examples:\n` +
-          `• @clipchain A cat playing with yarn\n` +
-          `• @clipchain A sunset over the ocean\n` +
-          `• @clipchain A robot dancing\n\n` +
+          `• @clipchain.base.eth A cat playing with yarn\n` +
+          `• @clipchain.base.eth A sunset over the ocean\n` +
+          `• @clipchain.base.eth A robot dancing\n\n` +
           `Commands: /status • /balance • /tx <amount> • /check-fal`,
         );
       }
