@@ -340,7 +340,8 @@ const transactionReferenceMiddleware: AgentMiddleware = async (ctx, next) => {
           // Store the video URL for this conversation so it can be shared later
           const conversationId = ctx.conversation.id;
           conversationVideoUrls.set(conversationId, { url: videoUrl, prompt: pendingVideoRequest });
-          console.log(`💾 Stored video URL for conversation ${conversationId}`);
+          console.log(`💾 Stored video URL for conversation ${conversationId}:`, { url: videoUrl, prompt: pendingVideoRequest });
+          console.log(`💾 Total conversations with videos:`, conversationVideoUrls.size);
 
           // Add share button after video generation
           await ActionBuilder.create(
@@ -462,7 +463,11 @@ registerAction("share-video", async (ctx) => {
   try {
     // Get the stored video URL for this conversation
     const conversationId = ctx.conversation.id;
+    console.log(`🔍 Looking for video data for conversation: ${conversationId}`);
+    console.log(`🔍 Available conversations in storage:`, Array.from(conversationVideoUrls.keys()));
+
     const videoData = conversationVideoUrls.get(conversationId);
+    console.log(`🔍 Found video data:`, videoData);
 
     if (!videoData) {
       await ctx.sendText("❌ Sorry, I couldn't find the video URL. Please try generating a new video.");
@@ -981,9 +986,10 @@ agent.on("text", async (ctx) => {
       const isTestCommand = messageContent.toLowerCase().includes("@clipchaintest");
 
       // Remove common trigger words to get the actual prompt
-      prompt = prompt.replace(/@clipchain/gi, "").trim();
-      prompt = prompt.replace(/@clipchaintest/gi, "").trim();
+      // Order matters: remove longer patterns first to avoid partial matches
       prompt = prompt.replace(/@clipchain\.base\.eth/gi, "").trim();
+      prompt = prompt.replace(/@clipchaintest/gi, "").trim();
+      prompt = prompt.replace(/@clipchain/gi, "").trim();
       prompt = prompt.replace(/generate video/gi, "").trim();
       prompt = prompt.replace(/create video/gi, "").trim();
 
@@ -1095,7 +1101,8 @@ agent.on("text", async (ctx) => {
       // Store the video URL for this conversation so it can be shared later
       const conversationId = ctx.conversation.id;
       conversationVideoUrls.set(conversationId, { url: videoUrl, prompt });
-      console.log(`💾 Stored video URL for conversation ${conversationId}`);
+      console.log(`💾 Stored video URL for conversation ${conversationId}:`, { url: videoUrl, prompt });
+      console.log(`💾 Total conversations with videos:`, conversationVideoUrls.size);
 
       // Add share button after video generation
       await ActionBuilder.create(
