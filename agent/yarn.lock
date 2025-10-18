@@ -87,14 +87,14 @@
     "@eslint/core" "^0.16.0"
     levn "^0.4.1"
 
-"@examples/xmtp-thinking-reaction@file:/home/maxglo/maxime/xmtp-agent-examples/agent/examples/xmtp-thinking-reaction":
+"@examples/xmtp-thinking-reaction@file:/home/maxglo/maxime/eth-rome/ethrome-base/agent/examples/xmtp-thinking-reaction":
   version "0.0.1"
   resolved "file:examples/xmtp-thinking-reaction"
   dependencies:
     "@xmtp/agent-sdk" "*"
     "@xmtp/content-type-reaction" "^2.0.2"
 
-"@examples/xmtp-transactions@file:/home/maxglo/maxime/xmtp-agent-examples/agent/examples/xmtp-transactions":
+"@examples/xmtp-transactions@file:/home/maxglo/maxime/eth-rome/ethrome-base/agent/examples/xmtp-transactions":
   version "0.0.0"
   resolved "file:examples/xmtp-transactions"
   dependencies:
@@ -103,7 +103,7 @@
     "@xmtp/content-type-wallet-send-calls" "^1.0.1"
     viem "^2.20.2"
 
-"@examples/xmtp-welcome-message@file:/home/maxglo/maxime/xmtp-agent-examples/agent/examples/xmtp-welcome-message":
+"@examples/xmtp-welcome-message@file:/home/maxglo/maxime/eth-rome/ethrome-base/agent/examples/xmtp-welcome-message":
   version "0.0.1"
   resolved "file:examples/xmtp-welcome-message"
   dependencies:
