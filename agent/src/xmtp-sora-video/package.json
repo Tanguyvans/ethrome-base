@@ -14,8 +14,7 @@
   "dependencies": {
     "@xmtp/agent-sdk": "*",
     "@xmtp/content-type-reaction": "*",
-    "@fal-ai/client": "^1.7.0",
-    "@coinbase/onchainkit": "^0.0.1"
+    "@fal-ai/client": "^1.7.0"
   },
   "devDependencies": {
     "tsx": "*",

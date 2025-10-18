@@ -9,7 +9,6 @@ An XMTP agent that generates videos using OpenAI's Sora 2 model via the Fal AI A
 - ⚡ Real-time video generation with progress updates
 - 🔗 Direct download links for generated videos
 - 🎭 Visual reaction emojis (🎬) that appear during processing
-- 📤 Share videos to social feeds with one click
 - 🏆 Leaderboard and video feed integration (miniapp ready)
 - 💡 Built-in example prompts and settings
 
@@ -64,13 +63,12 @@ Once the agent is running, you can interact with it through XMTP:
 
 When you start a conversation, you'll see a welcome message with interactive buttons:
 
+- **🎬 Generate Video** - Instructions for video generation
 - **🏆 Leaderboard** - Opens leaderboard in miniapp
 - **📺 Video Feed** - Opens video feed in miniapp
-
-After generating a video, you'll see additional buttons:
-
-- **📤 Share to Feed** - Share your video to social feeds
-- **🏠 Main Menu** - Return to the main menu
+- **💡 See Examples** - Shows example prompts
+- **⚙️ Video Settings** - Displays current settings
+- **ℹ️ More Info** - Shows help information
 
 ### Generate a Video
 
