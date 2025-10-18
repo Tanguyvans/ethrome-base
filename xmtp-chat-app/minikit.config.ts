@@ -1,4 +1,4 @@
-const ROOT_URL = process.env.NEXT_PUBLIC_ROOT_URL || 'https://xmtp-chat-5y0ai28ak-tanguys-projects-d277c7e4.vercel.app';
+const ROOT_URL = 'https://ethrome-base.vercel.app';
 
 export const minikitConfig = {
   accountAssociation: {
