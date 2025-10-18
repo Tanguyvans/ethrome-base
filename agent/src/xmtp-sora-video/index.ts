@@ -291,8 +291,8 @@ const transactionReferenceMiddleware: AgentMiddleware = async (ctx, next) => {
           let videoUrl: string;
 
           if (isTestCommand) {
-            // Use test video for @soratest commands
-            console.log(`🧪 Using test video for @soratest command in transaction middleware (hidden debug feature)`);
+            // Use test video for @clipchaintest commands
+            console.log(`🧪 Using test video for @clipchaintest command in transaction middleware (hidden debug feature)`);
             videoUrl = "https://v3b.fal.media/files/b/tiger/49AK4V5zO6RkFNfI-wiHc_ype2StUS.mp4";
 
             await ctx.sendText(
@@ -301,7 +301,7 @@ const transactionReferenceMiddleware: AgentMiddleware = async (ctx, next) => {
               `🎥 Watch: ${videoUrl}`
             );
           } else {
-            // Use Fal AI for @sora commands
+            // Use Veo 3.1 Fast for @clipchain commands
             console.log(`🤖 Using Veo 3.1 Fast for real video generation in transaction middleware`);
             try {
               videoUrl = await generateVideoWithFalAI(pendingVideoRequest, ctx);
@@ -354,15 +354,15 @@ const transactionReferenceMiddleware: AgentMiddleware = async (ctx, next) => {
           consumePayment(senderAddress);
         } else {
           // No specific video request, but user paid - offer to generate a video
-          await ctx.sendText(
-            `🎉 Payment successful! Ready to create videos - type @sora your idea!`
-          );
+        await ctx.sendText(
+          `🎉 Payment successful! Ready to create videos - type @clipchain your idea!`
+        );
         }
       }
     } else {
       // Regular transaction confirmation
       await ctx.sendText(
-        `🎉 Transaction confirmed! Ready to create videos - type @sora your idea!`
+        `🎉 Transaction confirmed! Ready to create videos - type @clipchain your idea!`
       );
     }
 
@@ -484,7 +484,7 @@ registerAction("share-video", async (ctx) => {
     await shareMiniApp(
       ctx,
       shareUrl,
-      "📤 Share to Feed - Opening compose dialog..."
+      "📤 Share to Feed !"
     );
     console.log(`✅ Opening compose dialog with video: ${videoData.url}`);
   } catch (error) {
@@ -516,7 +516,7 @@ registerAction("check-balance", async (ctx) => {
       `💰 Your USDC Balance\n\n` +
       `💵 ${balance} USDC\n\n` +
       `💡 Each video costs ${VIDEO_GENERATION_FEE} USDC\n` +
-      `🎬 Type @sora your idea to create videos!`
+      `🎬 Type @clipchain your idea to create videos!`
     );
     console.log(`✅ Balance check completed for ${senderAddress}: ${balance} USDC`);
   } catch (error) {
@@ -544,13 +544,13 @@ registerAction("check-payment-status", async (ctx) => {
       await ctx.sendText(
         `✅ Payment Active\n` +
         `💰 ${payment.amount} USDC • ⏰ ${timeLeft}m left\n\n` +
-        `Type @sora your description to create videos!`
+        `Type @clipchain your description to create videos!`
       );
     } else {
       await ctx.sendText(
         `❌ Payment Required\n` +
         `💰 ${VIDEO_GENERATION_FEE} USDC per video (1 hour)\n\n` +
-        `Type @sora your description to pay and generate!`
+        `Type @clipchain your description to pay and generate!`
       );
     }
     console.log(`✅ Payment status check completed for ${senderAddress}: ${hasPaid ? 'PAID' : 'NOT PAID'}`);
@@ -576,7 +576,7 @@ registerAction("generate-video-now", async (ctx) => {
       await ctx.sendText(
         `❌ Payment Required\n\n` +
         `💰 ${VIDEO_GENERATION_FEE} USDC needed\n\n` +
-        `Type @sora your description to pay and generate!`
+        `Type @clipchain your description to pay and generate!`
       );
       return;
     }
@@ -585,7 +585,7 @@ registerAction("generate-video-now", async (ctx) => {
     await ctx.sendText(
       `🎬 Ready to generate videos!\n\n` +
       `✅ Payment confirmed • ⏰ 1 hour valid\n\n` +
-      `Type @sora your description to create videos!`
+      `Type @clipchain your description to create videos!`
     );
 
     console.log(`✅ Video generation prompt sent to ${senderAddress}`);
@@ -636,13 +636,13 @@ async function showMainMenu(ctx: MessageContext) {
     console.log("Creating main menu...");
     await ActionBuilder.create(
       "main-menu",
-      `🎬 Sora Video Generator
+      `🎬 Clipchain Video Generator
 
 ✨ Create amazing videos with AI
 💰 Only ${VIDEO_GENERATION_FEE} USDC per video
 
 How to use:
-Type @sora your idea to generate videos`,
+Type @clipchain your idea to generate videos`,
     )
       .add("leaderboard", "🏆 Leaderboard", "primary")
       .add("video-feed", "📺 Video Feed", "primary")
@@ -735,7 +735,7 @@ agent.on("text", async (ctx) => {
         await ctx.sendText(
           `❌ Payment Required\n\n` +
           `You need to pay ${VIDEO_GENERATION_FEE} USDC first to generate videos.\n\n` +
-          `Use /tx ${VIDEO_GENERATION_FEE} to pay, or type @sora your description to start the payment flow.`
+          `Use /tx ${VIDEO_GENERATION_FEE} to pay, or type @clipchain your description to start the payment flow.`
         );
         return;
       }
@@ -1026,8 +1026,8 @@ agent.on("text", async (ctx) => {
       let videoUrl: string;
 
       if (isTestCommand) {
-        // Use test video for @soratest commands
-        console.log(`🧪 Using test video for @soratest command (hidden debug feature)`);
+        // Use test video for @clipchaintest commands
+        console.log(`🧪 Using test video for @clipchaintest command (hidden debug feature)`);
         videoUrl = "https://v3b.fal.media/files/b/tiger/49AK4V5zO6RkFNfI-wiHc_ype2StUS.mp4";
 
         await ctx.sendText(
@@ -1036,7 +1036,7 @@ agent.on("text", async (ctx) => {
           `🎥 Watch: ${videoUrl}`
         );
       } else {
-        // Use Fal AI for @sora commands
+        // Use Veo 3.1 Fast for @clipchain commands
         console.log(`🤖 Using Veo 3.1 Fast for real video generation`);
         try {
           videoUrl = await generateVideoWithFalAI(prompt, ctx);
@@ -1120,15 +1120,15 @@ agent.on("text", async (ctx) => {
         console.error("Error showing main menu:", menuError);
         // Fallback to simple text response
         await ctx.sendText(
-          `🎬 Sora Video Generator\n\n` +
+          `🎬 Clipchain Video Generator\n\n` +
           `✨ Create amazing videos with AI\n` +
           `💰 Only ${VIDEO_GENERATION_FEE} USDC per video\n\n` +
           `How to use:\n` +
-          `Type @sora your idea to generate videos\n\n` +
+          `Type @clipchain your idea to generate videos\n\n` +
           `Examples:\n` +
-          `• @sora A cat playing with yarn\n` +
-          `• @sora A sunset over the ocean\n` +
-          `• @sora A robot dancing\n\n` +
+          `• @clipchain A cat playing with yarn\n` +
+          `• @clipchain A sunset over the ocean\n` +
+          `• @clipchain A robot dancing\n\n` +
           `Commands: /status • /balance • /tx <amount> • /check-fal`,
         );
       }
@@ -1164,10 +1164,10 @@ agent.on("text", async (ctx) => {
 });
 
 agent.on("start", () => {
-  console.log(`🎬 Sora Video Generator Agent is running...`);
+  console.log(`🎬 Clipchain Video Generator Agent is running...`);
   console.log(`Address: ${agent.address}`);
   console.log(`🔗${getTestUrl(agent.client)}`);
-  console.log(`Send a message with @sora to generate videos!`);
+  console.log(`Send a message with @clipchain to generate videos!`);
 });
 
 void agent.start();
