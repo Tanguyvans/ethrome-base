@@ -1,0 +1,5 @@
+<svg width="1080" height="1920" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1080" height="1920" fill="#646cff"/>
+  <text x="540" y="960" font-family="Arial" font-size="120" fill="white" text-anchor="middle">XMTP Chat</text>
+  <text x="540" y="1100" font-family="Arial" font-size="60" fill="white" text-anchor="middle" opacity="0.8">Decentralized Messaging</text>
+</svg>

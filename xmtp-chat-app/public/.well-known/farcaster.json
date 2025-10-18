@@ -7,8 +7,8 @@
   "frame": {
     "version": "1",
     "name": "XMTP Chat",
-    "iconUrl": "https://ethrome-base.vercel.app/icon.png",
-    "splashImageUrl": "https://ethrome-base.vercel.app/splash.png",
+    "iconUrl": "https://ethrome-base.vercel.app/icon.svg",
+    "splashImageUrl": "https://ethrome-base.vercel.app/splash.svg",
     "splashBackgroundColor": "#646cff",
     "homeUrl": "https://ethrome-base.vercel.app",
     "webhookUrl": "https://ethrome-base.vercel.app/api/webhook"
