@@ -144,10 +144,13 @@ registerAction("share-video", async (ctx) => {
 
     // Encode the video URL and prompt for the mini app
     const encodedVideoUrl = encodeURIComponent(videoData.url);
-    const encodedPrompt = encodeURIComponent(videoData.prompt);
+
+    // Create branded text for Farcaster post
+    const castText = `🎬 ${videoData.prompt}\n\n✨ Generated with AI on @maxglo from clipchain`;
+    const encodedText = encodeURIComponent(castText);
 
     // Build the share URL with video data (using 'url' param to match mini app)
-    const shareUrl = `https://new-mini-app-quickstart-pi-nine.vercel.app/post-video?url=${encodedVideoUrl}&text=${encodedPrompt}`;
+    const shareUrl = `https://new-mini-app-quickstart-pi-nine.vercel.app/post-video?url=${encodedVideoUrl}&text=${encodedText}`;
 
     await shareMiniApp(
       ctx,
