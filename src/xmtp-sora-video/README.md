@@ -5,9 +5,10 @@ An XMTP agent that generates videos using OpenAI's Sora 2 model via the Fal AI A
 ## Features
 
 - 🎬 Generate videos from text prompts using Sora 2
-- 💬 Simple XMTP messaging interface
+- 💬 Simple XMTP messaging interface with reaction feedback
 - ⚡ Real-time video generation with progress updates
 - 🔗 Direct download links for generated videos
+- 🎭 Visual reaction emojis (🎬) that appear during processing
 
 ## Setup
 
@@ -39,6 +40,8 @@ XMTP_DB_ENCRYPTION_KEY=your_encryption_key_here
 # Fal AI API Key (get from https://fal.ai)
 FAL_KEY=your_fal_api_key_here
 ```
+
+**Note**: For testing purposes, the actual video generation is currently commented out to avoid API costs. The agent will show a mock response instead.
 
 ### 4. Run the Agent
 

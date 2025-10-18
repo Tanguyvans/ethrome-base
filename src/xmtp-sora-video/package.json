@@ -1,19 +1,20 @@
 {
-  "name": "@examples/xmtp-gpt",
-  "version": "0.0.0",
+  "name": "@examples/xmtp-sora-video",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "tsc",
     "dev": "tsx --watch index.ts",
     "gen:keys": "tsx ../../scripts/generateKeys.ts",
-    "lint": "cd ../.. && yarn eslint examples/xmtp-gpt",
+    "lint": "cd ../.. && yarn eslint examples/xmtp-sora-video",
     "revoke": "tsx ../../scripts/revokeInstallations.ts",
     "start": "tsx index.ts"
   },
   "dependencies": {
     "@xmtp/agent-sdk": "*",
-    "openai": "4.94.0"
+    "@xmtp/content-type-reaction": "*",
+    "@fal-ai/client": "^1.7.0"
   },
   "devDependencies": {
     "tsx": "*",

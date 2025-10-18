@@ -1,5 +1,10 @@
-import { Agent } from "@xmtp/agent-sdk";
+import { Agent, type MessageContext } from "@xmtp/agent-sdk";
 import { getTestUrl } from "@xmtp/agent-sdk/debug";
+import {
+  ContentTypeReaction,
+  ReactionCodec,
+  type Reaction,
+} from "@xmtp/content-type-reaction";
 // @ts-ignore - Fal AI client types may not be available
 import { fal } from "@fal-ai/client";
 import { loadEnvFile } from "../../utils/general";
@@ -11,9 +16,19 @@ fal.config({
   credentials: process.env.FAL_KEY,
 });
 
-const agent = await Agent.createFromEnv({});
+// Extended context type to include video generation reaction helpers
+interface VideoReactionContext extends MessageContext {
+  videoReaction?: {
+    removeVideoEmoji: () => Promise<void>;
+  };
+}
+
+const agent = await Agent.createFromEnv({
+  codecs: [new ReactionCodec()],
+});
 
 agent.on("text", async (ctx) => {
+  const videoCtx = ctx as VideoReactionContext;
   const messageContent = ctx.message.content.trim();
   const senderAddress = await ctx.getSenderAddress();
   console.log(`Received message: ${messageContent} by ${senderAddress}`);
@@ -25,6 +40,18 @@ agent.on("text", async (ctx) => {
       messageContent.toLowerCase().includes("generate video") ||
       messageContent.toLowerCase().includes("create video")
     ) {
+      // Add video emoji reaction for video generation requests
+      console.log("🎬 Reacting with video emoji...");
+      await ctx.conversation.send(
+        {
+          action: "added",
+          content: "🎬",
+          reference: ctx.message.id,
+          schema: "shortcode",
+        } as Reaction,
+        ContentTypeReaction,
+      );
+
       // Extract the prompt from the message
       let prompt = messageContent;
 
@@ -37,45 +64,25 @@ agent.on("text", async (ctx) => {
         await ctx.sendText(
           "Please provide a description for the video you want me to generate. Example: '@sora A cat playing with a ball of yarn'",
         );
+        // Remove video emoji for invalid request
+        if (videoCtx.videoReaction?.removeVideoEmoji) {
+          await videoCtx.videoReaction.removeVideoEmoji();
+        }
         return;
       }
 
-      // Send initial response
+      // Send response immediately
       await ctx.sendText(
-        `🎬 Generating your video: "${prompt}"\n\nThis may take a few minutes...`,
+        `🎬 I received your video request: "${prompt}"\n\nFor now, I'm in testing mode. When ready, I'll generate real videos using Sora 2!`,
       );
 
-      // Generate video using Fal AI Sora 2
-      console.log("Sending request to Fal AI with prompt:", prompt);
-      const result = await fal.subscribe("fal-ai/sora-2/text-to-video", {
-        input: {
-          prompt: prompt,
-          resolution: "720p",
-          aspect_ratio: "16:9",
-          duration: 4,
-        },
-        logs: true,
-        onQueueUpdate: (update: any) => {
-          if (update.status === "IN_PROGRESS") {
-            update.logs.map((log: any) => log.message).forEach(console.log);
-          }
-        },
-      });
-
-      console.log("Video generation completed:", result.data);
-
-      if (result.data && result.data.video) {
-        const videoUrl = result.data.video.url;
-        const videoId = result.data.video_id;
-
-        await ctx.sendText(
-          `✅ Video generated successfully!\n\n🎥 Video ID: ${videoId}\n🔗 Download: ${videoUrl}\n\nYour video is ready to watch!`,
-        );
-      } else {
-        await ctx.sendText(
-          "❌ Sorry, I couldn't generate the video. Please try again with a different description.",
-        );
+      // Remove video emoji after responding
+      if (videoCtx.videoReaction?.removeVideoEmoji) {
+        console.log("🗑️ Removing video emoji...");
+        await videoCtx.videoReaction.removeVideoEmoji();
       }
+
+      console.log("✅ Video request response sent successfully");
     } else {
       // If not a video generation request, provide help
       await ctx.sendText(
@@ -100,6 +107,15 @@ agent.on("text", async (ctx) => {
     }
 
     await ctx.sendText(errorMessage);
+
+    // Remove video emoji on error
+    if (videoCtx.videoReaction?.removeVideoEmoji) {
+      try {
+        await videoCtx.videoReaction.removeVideoEmoji();
+      } catch (removeError) {
+        console.error("Error removing video emoji:", removeError);
+      }
+    }
   }
 });
 
