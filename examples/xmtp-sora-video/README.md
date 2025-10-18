@@ -7,8 +7,7 @@ An XMTP agent that generates videos using OpenAI's Sora 2 model via the Fal AI A
 - 🎬 Generate videos from text prompts using Sora 2
 - 💬 Simple XMTP messaging interface
 - ⚡ Real-time video generation with progress updates
-- 🔗 Direct video links that display in chat
-- 🚀 Fast and lightweight - no video storage needed
+- 🔗 Direct download links for generated videos
 
 ## Setup
 
