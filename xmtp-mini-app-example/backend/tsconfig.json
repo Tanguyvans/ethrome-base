@@ -1,0 +1,19 @@
+{
+  "include": [ "src/index.ts"],
+  "compilerOptions": {  
+    "outDir": "./dist",
+    "esModuleInterop": true,
+    "declaration": true,
+    "declarationMap": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": false,
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strict": true,
+    "target": "ESNext"
+  }
+}
