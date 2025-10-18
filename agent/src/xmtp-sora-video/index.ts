@@ -78,9 +78,8 @@ async function hasUserPaidForVideo(senderAddress: string): Promise<boolean> {
   const payment = paymentStatus.get(senderAddress);
   if (!payment) return false;
 
-  // Check if payment is recent (within 1 hour) and sufficient
-  const oneHourAgo = Date.now() - (60 * 60 * 1000);
-  return payment.paid && payment.timestamp > oneHourAgo && payment.amount >= VIDEO_GENERATION_FEE;
+  // Check if payment is sufficient and not yet used
+  return payment.paid && payment.amount >= VIDEO_GENERATION_FEE;
 }
 
 // Helper function to mark user as paid
@@ -91,6 +90,11 @@ function markUserAsPaid(senderAddress: string, amount: number, pendingVideoReque
     amount: amount,
     pendingVideoRequest: pendingVideoRequest
   });
+}
+
+// Helper function to consume payment after video generation
+function consumePayment(senderAddress: string) {
+  paymentStatus.delete(senderAddress);
 }
 
 // Helper function to create payment request for video generation
@@ -126,7 +130,7 @@ async function requestVideoPayment(ctx: MessageContext, prompt: string) {
 
   await ctx.sendText(
     `🎬 **Video: "${prompt}"**\n\n` +
-    `💰 **Fee**: ${VIDEO_GENERATION_FEE} USDC (valid 1 hour)\n\n` +
+    `💰 **Fee**: ${VIDEO_GENERATION_FEE} USDC per video\n\n` +
     `Approve the transaction in your wallet to generate!`
   );
 
@@ -190,8 +194,8 @@ const transactionReferenceMiddleware: AgentMiddleware = async (ctx, next) => {
 
         await ctx.sendText(
           `✅ **Payment Confirmed!**\n` +
-          `💰 ${VIDEO_GENERATION_FEE} USDC • ⏰ 1 hour valid\n\n` +
-          `🎬 Ready to generate videos!`
+          `💰 ${VIDEO_GENERATION_FEE} USDC\n\n` +
+          `🎬 Ready to generate video!`
         );
 
         // If there's a pending video request, automatically generate it
@@ -232,18 +236,14 @@ const transactionReferenceMiddleware: AgentMiddleware = async (ctx, next) => {
             .add("share-video", "📤 Share", "primary")
             .send(ctx);
 
-          // Clear the pending video request
-          const updatedPayment = paymentStatus.get(senderAddress);
-          if (updatedPayment) {
-            updatedPayment.pendingVideoRequest = undefined;
-            paymentStatus.set(senderAddress, updatedPayment);
-          }
+          // Consume the payment after video generation
+          consumePayment(senderAddress);
         } else {
           // No specific video request, but user paid - offer to generate a video
           await ctx.sendText(
-            `🎬 **Ready to generate videos!**\n\n` +
-            `✅ Payment confirmed • ⏰ 1 hour valid\n\n` +
-            `Type **@sora your description** to create videos!`
+            `🎬 **Ready to generate video!**\n\n` +
+            `✅ Payment confirmed\n\n` +
+            `Type **@sora your description** to create video!`
           );
         }
       }
@@ -470,20 +470,15 @@ registerAction("payment-menu", async (ctx) => {
       return;
     }
 
-    const hasPaid = await hasUserPaidForVideo(senderAddress);
-
-    await ActionBuilder.create(
-      "payment-menu",
-      `💳 **Payment & Video**`
-    )
-      .add("check-payment-status", "🔍 Check Status", "primary")
-      .add("check-balance", "💰 Balance", "secondary")
-      .add(hasPaid ? "generate-video-now" : "back-to-main", hasPaid ? "🎬 Generate Video" : "🔙 Back", "primary")
-      .send(ctx);
-    console.log(`✅ Payment menu sent to ${senderAddress}`);
+    // Just show balance check - much simpler
+    const handler = getActionHandler("check-balance");
+    if (handler) {
+      await handler(ctx);
+    }
+    console.log(`✅ Balance check sent to ${senderAddress}`);
   } catch (error) {
     console.error("❌ Error in payment-menu handler:", error);
-    await ctx.sendText("❌ Sorry, there was an error opening the payment menu. Please try again.");
+    await ctx.sendText("❌ Sorry, there was an error checking your balance. Please try again.");
   }
 });
 
@@ -509,11 +504,11 @@ async function showMainMenu(ctx: MessageContext) {
       `🎬 **Sora Video Generator**
 
 Type **@sora your description** to create videos
-💰 **Fee**: ${VIDEO_GENERATION_FEE} USDC (valid 1 hour)`,
+💰 **Fee**: ${VIDEO_GENERATION_FEE} USDC per video`,
     )
       .add("leaderboard", "🏆 Leaderboard", "primary")
       .add("video-feed", "📺 Video Feed", "primary")
-      .add("payment-menu", "💳 Payment & Video", "secondary")
+      .add("payment-menu", "💰 Check Balance", "secondary")
       .send(ctx);
     console.log("Main menu sent successfully");
   } catch (error) {
@@ -889,7 +884,7 @@ agent.on("text", async (ctx) => {
         await ctx.sendText(
           `🎬 **Sora Video Generator**\n\n` +
           `Type **@sora your description** to create videos\n` +
-          `💰 **Fee**: ${VIDEO_GENERATION_FEE} USDC (1 hour valid)\n\n` +
+          `💰 **Fee**: ${VIDEO_GENERATION_FEE} USDC per video\n\n` +
           `**Examples:**\n` +
           `• @sora A cat playing with yarn\n` +
           `• @sora A sunset over the ocean\n` +
