@@ -125,6 +125,26 @@ registerAction("video-feed", async (ctx) => {
   }
 });
 
+registerAction("share-video", async (ctx) => {
+  const senderAddress = await ctx.getSenderAddress();
+  console.log(`📤 Share video button clicked by: ${senderAddress}`);
+
+  try {
+    // Simple share URL - you can customize this for your Coinbase app
+    const shareUrl = "https://your-coinbase-app.com/share";
+
+    await shareMiniApp(
+      ctx,
+      shareUrl,
+      "📤 **Share to Feed** - Share this video with your followers!"
+    );
+    console.log("✅ Video share mini app opened successfully");
+  } catch (error) {
+    console.error("❌ Error in share-video handler:", error);
+    await ctx.sendText("❌ Sorry, there was an error opening the share feature. Please try again.");
+  }
+});
+
 
 
 
@@ -138,6 +158,7 @@ registerAction("back-to-main", async (ctx) => {
 console.log("🎯 Registered actions:", [
   "leaderboard",
   "video-feed",
+  "share-video",
   "back-to-main"
 ]);
 
@@ -248,6 +269,14 @@ agent.on("text", async (ctx) => {
       await ctx.sendText(
         `🎬 I received your video request: "${prompt}"\n\nHere's an example of what your video will look like:\n\nhttps://v3b.fal.media/files/b/tiger/49AK4V5zO6RkFNfI-wiHc_ype2StUS.mp4`,
       );
+
+      // Add share button after video generation
+      await ActionBuilder.create(
+        "video-share-menu",
+        "✨ Your video is ready! Share it with your followers:"
+      )
+        .add("share-video", "📤 Share to Feed", "primary")
+        .send(ctx);
 
       // Remove video emoji after responding
       if (videoCtx.videoReaction?.removeVideoEmoji) {
