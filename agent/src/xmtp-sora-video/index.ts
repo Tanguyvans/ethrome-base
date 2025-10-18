@@ -10,11 +10,16 @@ import {
   inlineActionsMiddleware,
   registerAction,
   showNavigationOptions,
+  getActionHandler,
 } from "../../utils/inline-actions/inline-actions.js";
 import {
   ContentTypeActions,
   ActionsCodec,
 } from "../../utils/inline-actions/types/ActionsContent.js";
+import {
+  IntentCodec,
+  type IntentContent,
+} from "../../utils/inline-actions/types/IntentContent.js";
 // @ts-ignore - Fal AI client types may not be available
 import { fal } from "@fal-ai/client";
 import { loadEnvFile } from "../../utils/general.js";
@@ -34,12 +39,34 @@ interface VideoReactionContext extends MessageContext {
 }
 
 const agent = await Agent.createFromEnv({
-  codecs: [new ReactionCodec(), new ActionsCodec()],
+  codecs: [new ReactionCodec(), new ActionsCodec(), new IntentCodec()],
 });
 
 // Add inline actions middleware with error handling
 agent.use(async (ctx, next) => {
   try {
+    console.log("Processing message with middleware...");
+    console.log("Message content type:", ctx.message.contentType);
+    console.log("Message content:", ctx.message.content);
+
+    // Handle intent messages (button clicks)
+    if (ctx.message.contentType?.typeId === "intent") {
+      console.log("🎯 Detected intent message - processing button click");
+      const intentContent = ctx.message.content as IntentContent;
+      console.log("Intent content:", intentContent);
+
+      const handler = getActionHandler(intentContent.actionId);
+      if (handler) {
+        console.log(`🎯 Executing action: ${intentContent.actionId}`);
+        await handler(ctx);
+        return; // Don't continue to next middleware
+      } else {
+        console.log(`❌ No handler found for action: ${intentContent.actionId}`);
+        await ctx.sendText(`❌ Unknown action: ${intentContent.actionId}`);
+        return;
+      }
+    }
+
     await inlineActionsMiddleware(ctx, next);
   } catch (error) {
     console.error("Error in inline actions middleware:", error);
@@ -52,25 +79,70 @@ agent.use(async (ctx, next) => {
 registerAction("generate-video", async (ctx) => {
   const senderAddress = await ctx.getSenderAddress();
   console.log(`🎬 Generate video button clicked by: ${senderAddress}`);
-  await ctx.sendText(
-    "🎬 To generate a video, just type '@sora' followed by your description!\n\nExample: '@sora A cat playing with a ball of yarn'",
-  );
+
+  try {
+    // Show prompt input interface
+    await ActionBuilder.create(
+      "video-prompt-input",
+      `🎬 **Generate Your Video**
+
+Type your video description below and I'll create an amazing video for you!
+
+**Examples:**
+• A cat playing with a ball of yarn
+• A futuristic city with flying cars
+• A chef preparing a gourmet meal
+• A robot dancing in a futuristic city
+
+Just type your description and I'll handle the rest! 🎥`,
+    )
+      .add("back-to-main", "← Back to Main Menu", "secondary")
+      .send(ctx);
+    console.log("✅ Generate video response sent successfully");
+  } catch (error) {
+    console.error("❌ Error in generate-video handler:", error);
+    await ctx.sendText("❌ Sorry, there was an error. Please try again.");
+  }
 });
 
 registerAction("leaderboard", async (ctx) => {
   const senderAddress = await ctx.getSenderAddress();
   console.log(`🏆 Leaderboard button clicked by: ${senderAddress}`);
-  await ctx.sendText(
-    "🏆 Opening leaderboard in miniapp...\n\n[This would open your frontend miniapp URL with leaderboard view]",
-  );
+
+  try {
+    // Open leaderboard URL
+    await ctx.sendText(
+      `🏆 **Opening Leaderboard**
+
+[Click here to view the leaderboard](fake-link)
+
+See the most popular videos and vote for your favorites! 🏆`,
+    );
+    console.log("✅ Leaderboard response sent successfully");
+  } catch (error) {
+    console.error("❌ Error in leaderboard handler:", error);
+    await ctx.sendText("❌ Sorry, there was an error opening the leaderboard. Please try again.");
+  }
 });
 
 registerAction("video-feed", async (ctx) => {
   const senderAddress = await ctx.getSenderAddress();
   console.log(`📺 Video feed button clicked by: ${senderAddress}`);
-  await ctx.sendText(
-    "📺 Opening video feed in miniapp...\n\n[This would open your frontend miniapp URL with video feed view]",
-  );
+
+  try {
+    // Open video feed URL
+    await ctx.sendText(
+      `📺 **Opening Video Feed**
+
+[Click here to browse all videos](fake-link)
+
+Discover amazing videos created by the community! 🎬`,
+    );
+    console.log("✅ Video feed response sent successfully");
+  } catch (error) {
+    console.error("❌ Error in video-feed handler:", error);
+    await ctx.sendText("❌ Sorry, there was an error opening the video feed. Please try again.");
+  }
 });
 
 registerAction("examples", async (ctx) => {
@@ -97,8 +169,74 @@ These settings are optimized for the best quality and performance!`);
 });
 
 registerAction("help", async (ctx) => {
+  const senderAddress = await ctx.getSenderAddress();
+  console.log(`ℹ️ More info button clicked by: ${senderAddress}`);
+
+  try {
+    await ctx.sendText(`ℹ️ **About Sora Video Generator**
+
+🎬 **What is this?**
+I'm an AI agent that generates amazing videos using OpenAI's Sora 2 model! You can create 4-second videos from simple text descriptions.
+
+💬 **How to use:**
+• **In any chat**: Just type \`@sora your description\` and I'll generate a video
+• **Group chats**: Works perfectly! Everyone can see and enjoy the videos
+• **Private chats**: Create videos just for you
+
+🏆 **Community Features:**
+• **Leaderboard**: See the most popular videos voted by the community
+• **Video Feed**: Browse all videos created by users
+• **Likes & Voting**: Rate videos to help the best ones rise to the top
+
+🎥 **Video Specs:**
+• Resolution: 720p HD
+• Duration: 4 seconds
+• Format: MP4
+• Aspect Ratio: 16:9
+
+✨ **Perfect for:**
+• Creative projects
+• Social media content
+• Group entertainment
+• Brainstorming ideas
+• Having fun with friends!
+
+Ready to create something amazing? Just type \`@sora your idea\` and let's go! 🚀`);
+    console.log("✅ Help response sent successfully");
+  } catch (error) {
+    console.error("❌ Error in help handler:", error);
+    await ctx.sendText("❌ Sorry, there was an error. Please try again.");
+  }
+});
+
+registerAction("back-to-main", async (ctx) => {
   await showMainMenu(ctx);
 });
+
+// Add a simple test action for debugging
+registerAction("test-action", async (ctx) => {
+  console.log("🧪 Test action clicked!");
+  await ctx.sendText("🧪 Test action working! The button system is functioning correctly.");
+});
+
+// Add a test for intent handling
+registerAction("test-intent", async (ctx) => {
+  console.log("🎯 Test intent action clicked!");
+  await ctx.sendText("🎯 Intent handling working! Button clicks are being processed correctly.");
+});
+
+// Log all registered actions for debugging
+console.log("🎯 Registered actions:", [
+  "generate-video",
+  "leaderboard",
+  "video-feed",
+  "examples",
+  "settings",
+  "help",
+  "back-to-main",
+  "test-action",
+  "test-intent"
+]);
 
 // Helper function to show the main menu
 async function showMainMenu(ctx: MessageContext) {
@@ -106,15 +244,18 @@ async function showMainMenu(ctx: MessageContext) {
     console.log("Creating main menu...");
     await ActionBuilder.create(
       "main-menu",
-      `👋 Welcome to Sora Video Generator Bot!
+      `👋 Welcome to Sora Video Generator!
 
-I'm here to help you create amazing videos using OpenAI's Sora 2 model. I can generate 4-second videos from your text descriptions!
+🎬 Create amazing videos with AI in any chat!
+📱 Works in group chats, private chats, and DMs
+🏆 Community features with leaderboards and voting
 
 ✨ Choose an action below to get started:`,
     )
       .add("generate-video", "🎬 Generate Video", "primary")
       .add("leaderboard", "🏆 Leaderboard", "primary")
       .add("video-feed", "📺 Video Feed", "primary")
+      .add("test-action", "🧪 Test Button", "secondary")
       .add("examples", "💡 See Examples", "secondary")
       .add("settings", "⚙️ Video Settings", "secondary")
       .add("help", "ℹ️ More Info", "secondary")
@@ -133,6 +274,43 @@ agent.on("text", async (ctx) => {
   console.log(`Received message: ${messageContent} by ${senderAddress}`);
 
   try {
+    // Check for action keywords (fallback for button clicks)
+    if (messageContent.toLowerCase().includes("help") || messageContent.toLowerCase().includes("more info")) {
+      console.log("🔄 Fallback: Handling help action via text");
+      const handler = getActionHandler("help");
+      if (handler) {
+        await handler(ctx);
+        return;
+      }
+    }
+
+    if (messageContent.toLowerCase().includes("leaderboard")) {
+      console.log("🔄 Fallback: Handling leaderboard action via text");
+      const handler = getActionHandler("leaderboard");
+      if (handler) {
+        await handler(ctx);
+        return;
+      }
+    }
+
+    if (messageContent.toLowerCase().includes("video feed")) {
+      console.log("🔄 Fallback: Handling video-feed action via text");
+      const handler = getActionHandler("video-feed");
+      if (handler) {
+        await handler(ctx);
+        return;
+      }
+    }
+
+    if (messageContent.toLowerCase().includes("test")) {
+      console.log("🔄 Fallback: Handling test-action via text");
+      const handler = getActionHandler("test-action");
+      if (handler) {
+        await handler(ctx);
+        return;
+      }
+    }
+
     // Check if the message is asking for video generation
     if (
       messageContent.toLowerCase().includes("@sora") ||

@@ -35,6 +35,11 @@ export function getLastSentActionMessage(): unknown {
   return lastSentActionMessage;
 }
 
+// Get action handler by ID
+export function getActionHandler(actionId: string): ActionHandler | undefined {
+  return actionHandlers.get(actionId);
+}
+
 // Clear all registered actions (useful for debugging)
 export function clearAllActions(): void {
   actionHandlers.clear();
