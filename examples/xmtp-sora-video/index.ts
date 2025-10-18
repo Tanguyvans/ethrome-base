@@ -69,8 +69,11 @@ agent.on("text", async (ctx) => {
         const videoId = result.data.video_id;
 
         await ctx.sendText(
-          `✅ Video generated successfully!\n\n🎥 Video ID: ${videoId}\n🔗 Download: ${videoUrl}\n\nYour video is ready to watch!`,
+          `✅ Video generated successfully!\n\n🎥 Video ID: ${videoId}\n\n🎬 Your video:`,
         );
+
+        // Send the video URL - XMTP should automatically detect and display it as a video
+        await ctx.sendText(videoUrl);
       } else {
         await ctx.sendText(
           "❌ Sorry, I couldn't generate the video. Please try again with a different description.",

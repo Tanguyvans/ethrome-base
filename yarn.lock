@@ -736,6 +736,9 @@
   dependencies:
     "@fal-ai/client" "^1.7.0"
     "@xmtp/agent-sdk" "*"
+    "@xmtp/content-type-remote-attachment" "*"
+    axios "^1.6.0"
+    form-data "^4.0.0"
 
 "@examples/xmtp-thinking-reaction@file:/home/maxglo/maxime/xmtp-agent-examples/examples/xmtp-thinking-reaction":
   version "0.0.1"
@@ -3120,7 +3123,7 @@
   dependencies:
     "@xmtp/content-type-primitives" "^2.0.2"
 
-"@xmtp/content-type-remote-attachment@^2.0.2":
+"@xmtp/content-type-remote-attachment@*", "@xmtp/content-type-remote-attachment@^2.0.2":
   version "2.0.2"
   resolved "https://registry.npmjs.org/@xmtp/content-type-remote-attachment/-/content-type-remote-attachment-2.0.2.tgz"
   integrity sha512-gV2yU6UWsLQcJ228B7jOvtzUyK/+TfG0EUevxbz3OUuWpVpoo110qAa3HWUlahL1fWuaoFSX9GmESyw2UJWAQw==
