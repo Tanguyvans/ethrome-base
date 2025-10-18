@@ -36,9 +36,15 @@ import { USDCHandler } from "../../utils/usdc.js";
 loadEnvFile();
 
 // Configure Fal AI client
-fal.config({
-  credentials: process.env.FAL_KEY,
-});
+const falKey = process.env.FAL_KEY;
+if (!falKey) {
+  console.warn("⚠️ FAL_KEY environment variable not set - Fal AI video generation will not work");
+} else {
+  console.log("✅ FAL_KEY found, configuring Fal AI client");
+  fal.config({
+    credentials: falKey,
+  });
+}
 
 // Network configuration for transactions
 const NETWORK_ID = process.env.NETWORK_ID || "base-sepolia";
@@ -49,7 +55,7 @@ const VIDEO_GENERATION_FEE = 0.001; // 0.001 USDC fee for video generation (mini
 const FEE_IN_DECIMALS = Math.floor(VIDEO_GENERATION_FEE * Math.pow(10, 6)); // Convert to USDC decimals
 
 // Simple in-memory payment tracking (in production, use a database)
-const paymentStatus = new Map<string, { paid: boolean; timestamp: number; amount: number; pendingVideoRequest?: string }>();
+const paymentStatus = new Map<string, { paid: boolean; timestamp: number; amount: number; pendingVideoRequest?: string; isTestCommand?: boolean }>();
 
 // Store video URLs per conversation for sharing
 const conversationVideoUrls = new Map<string, { url: string; prompt: string }>();
@@ -86,12 +92,13 @@ async function hasUserPaidForVideo(senderAddress: string): Promise<boolean> {
 }
 
 // Helper function to mark user as paid
-function markUserAsPaid(senderAddress: string, amount: number, pendingVideoRequest?: string) {
+function markUserAsPaid(senderAddress: string, amount: number, pendingVideoRequest?: string, isTestCommand?: boolean) {
   paymentStatus.set(senderAddress, {
     paid: true,
     timestamp: Date.now(),
     amount: amount,
-    pendingVideoRequest: pendingVideoRequest
+    pendingVideoRequest: pendingVideoRequest,
+    isTestCommand: isTestCommand
   });
 }
 
@@ -100,11 +107,71 @@ function consumePayment(senderAddress: string) {
   paymentStatus.delete(senderAddress);
 }
 
+// Helper function to generate video using Fal AI
+async function generateVideoWithFalAI(prompt: string, ctx: MessageContext): Promise<string> {
+  try {
+    console.log(`🎬 Starting Fal AI video generation for prompt: "${prompt}"`);
+
+    // Check if Fal AI is properly configured
+    const falKey = process.env.FAL_KEY;
+    if (!falKey) {
+      throw new Error("FAL_KEY environment variable not set. Please add your Fal AI API key to the .env file.");
+    }
+
+    // Send initial status message
+    await ctx.sendText(
+      `🎬 Generating your video with AI...\n\n` +
+      `✨ "${prompt}"\n\n` +
+      `⏳ This may take 2-3 minutes, please wait...`
+    );
+
+    const result = await fal.subscribe("fal-ai/sora-2/text-to-video", {
+      input: {
+        prompt: prompt
+      },
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS") {
+          update.logs.map((log) => log.message).forEach(console.log);
+        }
+      },
+    });
+
+    console.log("Fal AI result:", result.data);
+    console.log("Fal AI request ID:", result.requestId);
+
+    // Extract video URL from result
+    const videoUrl = result.data?.video?.url;
+    if (!videoUrl) {
+      throw new Error("No video URL returned from Fal AI");
+    }
+
+    console.log(`✅ Video generated successfully: ${videoUrl}`);
+    return videoUrl;
+
+  } catch (error: any) {
+    console.error("❌ Error generating video with Fal AI:", error);
+
+    // Provide specific error messages based on error type
+    if (error.status === 401) {
+      throw new Error("Fal AI authentication failed. Please check your FAL_KEY in the .env file.");
+    } else if (error.status === 403) {
+      throw new Error("Access denied to Fal AI Sora-2. Please check your subscription or API key permissions.");
+    } else if (error.status === 429) {
+      throw new Error("Fal AI rate limit exceeded. Please try again in a few minutes.");
+    } else if (error.message?.includes("FAL_KEY")) {
+      throw error; // Re-throw our custom message
+    } else {
+      throw new Error(`Fal AI error: ${error.message || "Unknown error occurred"}`);
+    }
+  }
+}
+
 // Helper function to create payment request for video generation
-async function requestVideoPayment(ctx: MessageContext, prompt: string) {
+async function requestVideoPayment(ctx: MessageContext, prompt: string, isTestCommand: boolean = false) {
   const senderAddress = await ctx.getSenderAddress();
   if (!senderAddress) {
-    await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
+    await ctx.sendText("❌ Oops! Could not determine your wallet address.");
     return;
   }
 
@@ -115,7 +182,8 @@ async function requestVideoPayment(ctx: MessageContext, prompt: string) {
     paid: false,
     timestamp: 0,
     amount: 0,
-    pendingVideoRequest: prompt
+    pendingVideoRequest: prompt,
+    isTestCommand: isTestCommand
   });
 
   // Create payment request
@@ -132,19 +200,15 @@ async function requestVideoPayment(ctx: MessageContext, prompt: string) {
   console.log("Wallet send calls created:", JSON.stringify(walletSendCalls, null, 2));
 
   await ctx.sendText(
-    `🎬 **Creating Your Video**\n\n` +
-    `✨ **"${prompt}"**\n\n` +
-    `💰 **Cost**: ${VIDEO_GENERATION_FEE} USDC\n\n` +
-    `🔐 **Approve the transaction in your wallet to start generating!**`
+    `🎬 Creating your video "${prompt}"\n\n` +
+    `💰 Cost: ${VIDEO_GENERATION_FEE} USDC\n\n` +
+    `🔐 Approve the transaction to start generating!`
   );
 
   // Send the transaction request
   await ctx.conversation.send(walletSendCalls, ContentTypeWalletSendCalls);
 
-  // Send follow-up instructions
-  await ctx.sendText(
-    `💡 **After payment, your video will be generated automatically!**`
-  );
+  // Remove redundant follow-up message
 }
 
 // Transaction reference middleware
@@ -191,15 +255,15 @@ const transactionReferenceMiddleware: AgentMiddleware = async (ctx, next) => {
         // Get the pending video request if any
         const currentPayment = paymentStatus.get(senderAddress);
         const pendingVideoRequest = currentPayment?.pendingVideoRequest;
+        const isTestCommand = currentPayment?.isTestCommand || false;
         console.log("Pending video request:", pendingVideoRequest);
+        console.log("Is test command:", isTestCommand);
 
-        markUserAsPaid(senderAddress, VIDEO_GENERATION_FEE, pendingVideoRequest);
+        markUserAsPaid(senderAddress, VIDEO_GENERATION_FEE, pendingVideoRequest, isTestCommand);
         console.log(`✅ Video generation payment confirmed for ${senderAddress}`);
 
         await ctx.sendText(
-          `🎉 **Payment Successful!**\n\n` +
-          `✅ ${VIDEO_GENERATION_FEE} USDC received\n` +
-          `🎬 Starting video generation...`
+          `🎉 Payment successful! Starting video generation...`
         );
 
         // If there's a pending video request, automatically generate it
@@ -217,23 +281,55 @@ const transactionReferenceMiddleware: AgentMiddleware = async (ctx, next) => {
             ContentTypeReaction,
           );
 
-          // Generate the video
-          await ctx.sendText(
-            `🎬 **Generating Your Video**\n\n` +
-            `✨ **"${pendingVideoRequest}"**\n\n` +
-            `⏳ **Please wait while we create your masterpiece...**`
-          );
+          // Generate video based on command type
+          let videoUrl: string;
 
-          // Send example video for testing (replace with actual generation)
-          const videoUrl = "https://v3b.fal.media/files/b/tiger/49AK4V5zO6RkFNfI-wiHc_ype2StUS.mp4";
+          if (isTestCommand) {
+            // Use test video for @soratest commands
+            console.log(`🧪 Using test video for @soratest command in transaction middleware (hidden debug feature)`);
+            videoUrl = "https://v3b.fal.media/files/b/tiger/49AK4V5zO6RkFNfI-wiHc_ype2StUS.mp4";
 
-          await ctx.sendText(
-            `🎉 **Your Video is Ready!**\n\n` +
-            `✨ **"${pendingVideoRequest}"**\n\n` +
-            `🎥 **Watch your video:**\n` +
-            `${videoUrl}\n\n` +
-            `🙏 **Thank you for using Sora Video Generator!**`
-          );
+            await ctx.sendText(
+              `🎉 Your test video is ready!\n\n` +
+              `✨ "${pendingVideoRequest}"\n\n` +
+              `🎥 Watch: ${videoUrl}`
+            );
+          } else {
+            // Use Fal AI for @sora commands
+            console.log(`🤖 Using Fal AI for real video generation in transaction middleware`);
+            try {
+              videoUrl = await generateVideoWithFalAI(pendingVideoRequest, ctx);
+
+              await ctx.sendText(
+                `🎉 Your video is ready!\n\n` +
+                `✨ "${pendingVideoRequest}"\n\n` +
+                `🎥 Watch: ${videoUrl}`
+              );
+            } catch (error: any) {
+              console.error("❌ Fal AI generation failed in transaction middleware:", error);
+
+              // Provide fallback to test video for authentication issues
+              const isAuthError = error.message?.includes("authentication") || error.message?.includes("FAL_KEY");
+
+              if (isAuthError) {
+                videoUrl = "https://v3b.fal.media/files/b/tiger/49AK4V5zO6RkFNfI-wiHc_ype2StUS.mp4";
+                await ctx.sendText(
+                  `❌ Fal AI authentication failed.\n\n` +
+                  `🔧 Please add your FAL_KEY to the .env file.\n\n` +
+                  `For now, here's a test video instead:\n\n` +
+                  `🎉 Your test video is ready!\n\n` +
+                  `✨ "${pendingVideoRequest}"\n\n` +
+                  `🎥 Watch: ${videoUrl}`
+                );
+              } else {
+                await ctx.sendText(
+                  `❌ Sorry, there was an error generating your video.\n\n` +
+                  `Please try again later.`
+                );
+                return;
+              }
+            }
+          }
 
           // Store the video URL for this conversation so it can be shared later
           const conversationId = ctx.conversation.id;
@@ -243,7 +339,7 @@ const transactionReferenceMiddleware: AgentMiddleware = async (ctx, next) => {
           // Add share button after video generation
           await ActionBuilder.create(
             "video-share-menu",
-            "🚀 **Share your amazing video!**"
+            "🚀 Share your amazing video!"
           )
             .add("share-video", "📤 Share Video", "primary")
             .send(ctx);
@@ -253,18 +349,14 @@ const transactionReferenceMiddleware: AgentMiddleware = async (ctx, next) => {
         } else {
           // No specific video request, but user paid - offer to generate a video
           await ctx.sendText(
-            `🎉 **Payment Successful!**\n\n` +
-            `✅ ${VIDEO_GENERATION_FEE} USDC received\n\n` +
-            `🎬 **Ready to create!** Type \`@sora your idea\` to generate a video!`
+            `🎉 Payment successful! Ready to create videos - type @sora your idea!`
           );
         }
       }
     } else {
       // Regular transaction confirmation
       await ctx.sendText(
-        `🎉 **Transaction Confirmed!**\n\n` +
-        `✅ Payment received successfully\n\n` +
-        `🎬 **Ready to create!** Type \`@sora your idea\` to generate a video!`
+        `🎉 Transaction confirmed! Ready to create videos - type @sora your idea!`
       );
     }
 
@@ -331,7 +423,7 @@ registerAction("leaderboard", async (ctx) => {
     await shareMiniApp(
       ctx,
       "https://new-mini-app-quickstart-pi-nine.vercel.app/leaderboard",
-      "🏆 **Leaderboard** - Check the leaderboard here!"
+      "🏆 Leaderboard - Check the leaderboard here!"
     );
     console.log("✅ Leaderboard shared successfully");
   } catch (error) {
@@ -348,7 +440,7 @@ registerAction("video-feed", async (ctx) => {
     await shareMiniApp(
       ctx,
       "https://new-mini-app-quickstart-pi-nine.vercel.app/",
-      "📺 **Video Feed** - Browse all videos here!"
+      "📺 Video Feed - Browse all videos here!"
     );
     console.log("✅ Video feed shared successfully");
   } catch (error) {
@@ -375,7 +467,9 @@ registerAction("share-video", async (ctx) => {
     const encodedVideoUrl = encodeURIComponent(videoData.url);
 
     // Create branded text for Farcaster post
-    const castText = `🎬 ${videoData.prompt}\n\n✨ Generated with AI on @maxglo from clipchain`;
+    // Check if this is a test video (contains the test video URL)
+    const isTestVideo = videoData.url.includes("49AK4V5zO6RkFNfI-wiHc_ype2StUS.mp4");
+    const castText = `🎬 ${videoData.prompt}\n\n✨ ${isTestVideo ? 'Test video from' : 'Generated with AI on'} clipchain`;
     const encodedText = encodeURIComponent(castText);
 
     // Build the share URL with video data (using 'url' param to match mini app)
@@ -384,7 +478,7 @@ registerAction("share-video", async (ctx) => {
     await shareMiniApp(
       ctx,
       shareUrl,
-      "📤 **Share to Feed** - Opening compose dialog..."
+      "📤 Share to Feed - Opening compose dialog..."
     );
     console.log(`✅ Opening compose dialog with video: ${videoData.url}`);
   } catch (error) {
@@ -408,20 +502,20 @@ registerAction("check-balance", async (ctx) => {
 
   try {
     if (!senderAddress) {
-      await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
+      await ctx.sendText("❌ Oops! Could not determine your wallet address.");
       return;
     }
     const balance = await usdcHandler.getUSDCBalance(senderAddress);
     await ctx.sendText(
-      `💰 **Your USDC Balance**\n\n` +
-      `💵 **${balance} USDC**\n\n` +
+      `💰 Your USDC Balance\n\n` +
+      `💵 ${balance} USDC\n\n` +
       `💡 Each video costs ${VIDEO_GENERATION_FEE} USDC\n` +
-      `🎬 Type \`@sora your idea\` to create videos!`
+      `🎬 Type @sora your idea to create videos!`
     );
     console.log(`✅ Balance check completed for ${senderAddress}: ${balance} USDC`);
   } catch (error) {
     console.error("❌ Error checking balance:", error);
-    await ctx.sendText("❌ **Oops!** There was an error checking your balance. Please try again.");
+    await ctx.sendText("❌ Oops! There was an error checking your balance. Please try again.");
   }
 });
 
@@ -432,7 +526,7 @@ registerAction("check-payment-status", async (ctx) => {
 
   try {
     if (!senderAddress) {
-      await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
+      await ctx.sendText("❌ Oops! Could not determine your wallet address.");
       return;
     }
 
@@ -442,15 +536,15 @@ registerAction("check-payment-status", async (ctx) => {
     if (hasPaid && payment) {
       const timeLeft = Math.max(0, 60 - Math.floor((Date.now() - payment.timestamp) / (1000 * 60)));
       await ctx.sendText(
-        `✅ **Payment Active**\n` +
+        `✅ Payment Active\n` +
         `💰 ${payment.amount} USDC • ⏰ ${timeLeft}m left\n\n` +
-        `Type **@sora your description** to create videos!`
+        `Type @sora your description to create videos!`
       );
     } else {
       await ctx.sendText(
-        `❌ **Payment Required**\n` +
+        `❌ Payment Required\n` +
         `💰 ${VIDEO_GENERATION_FEE} USDC per video (1 hour)\n\n` +
-        `Type **@sora your description** to pay and generate!`
+        `Type @sora your description to pay and generate!`
       );
     }
     console.log(`✅ Payment status check completed for ${senderAddress}: ${hasPaid ? 'PAID' : 'NOT PAID'}`);
@@ -466,7 +560,7 @@ registerAction("generate-video-now", async (ctx) => {
 
   try {
     if (!senderAddress) {
-      await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
+      await ctx.sendText("❌ Oops! Could not determine your wallet address.");
       return;
     }
 
@@ -474,18 +568,18 @@ registerAction("generate-video-now", async (ctx) => {
 
     if (!hasPaid) {
       await ctx.sendText(
-        `❌ **Payment Required**\n\n` +
+        `❌ Payment Required\n\n` +
         `💰 ${VIDEO_GENERATION_FEE} USDC needed\n\n` +
-        `Type **@sora your description** to pay and generate!`
+        `Type @sora your description to pay and generate!`
       );
       return;
     }
 
     // User has paid, ask for video description
     await ctx.sendText(
-      `🎬 **Ready to generate videos!**\n\n` +
+      `🎬 Ready to generate videos!\n\n` +
       `✅ Payment confirmed • ⏰ 1 hour valid\n\n` +
-      `Type **@sora your description** to create videos!`
+      `Type @sora your description to create videos!`
     );
 
     console.log(`✅ Video generation prompt sent to ${senderAddress}`);
@@ -501,7 +595,7 @@ registerAction("payment-menu", async (ctx) => {
 
   try {
     if (!senderAddress) {
-      await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
+      await ctx.sendText("❌ Oops! Could not determine your wallet address.");
       return;
     }
 
@@ -513,7 +607,7 @@ registerAction("payment-menu", async (ctx) => {
     console.log(`✅ Balance check sent to ${senderAddress}`);
   } catch (error) {
     console.error("❌ Error in payment-menu handler:", error);
-    await ctx.sendText("❌ **Oops!** There was an error checking your balance. Please try again.");
+    await ctx.sendText("❌ Oops! There was an error checking your balance. Please try again.");
   }
 });
 
@@ -536,13 +630,13 @@ async function showMainMenu(ctx: MessageContext) {
     console.log("Creating main menu...");
     await ActionBuilder.create(
       "main-menu",
-      `🎬 **Sora Video Generator**
+      `🎬 Sora Video Generator
 
 ✨ Create amazing videos with AI
 💰 Only ${VIDEO_GENERATION_FEE} USDC per video
 
-**How to use:**
-Type \`@sora your idea\` to get started!`,
+How to use:
+Type @sora your idea to generate videos`,
     )
       .add("leaderboard", "🏆 Leaderboard", "primary")
       .add("video-feed", "📺 Video Feed", "primary")
@@ -625,7 +719,7 @@ agent.on("text", async (ctx) => {
       const senderAddress = await ctx.getSenderAddress();
 
       if (!senderAddress) {
-        await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
+        await ctx.sendText("❌ Oops! Could not determine your wallet address.");
         return;
       }
 
@@ -633,21 +727,47 @@ agent.on("text", async (ctx) => {
 
       if (!hasPaid) {
         await ctx.sendText(
-          `❌ **Payment Required**\n\n` +
+          `❌ Payment Required\n\n` +
           `You need to pay ${VIDEO_GENERATION_FEE} USDC first to generate videos.\n\n` +
-          `Use **/tx ${VIDEO_GENERATION_FEE}** to pay, or type **@sora your description** to start the payment flow.`
+          `Use /tx ${VIDEO_GENERATION_FEE} to pay, or type @sora your description to start the payment flow.`
         );
         return;
       }
 
       // User has paid, ask for video description
       await ctx.sendText(
-        `🎬 **Ready to generate your video!**\n\n` +
-        `✅ **Payment**: Confirmed (${VIDEO_GENERATION_FEE} USDC)\n` +
-        `⏰ **Valid for**: 1 hour\n\n` +
+        `🎬 Ready to generate your video!\n\n` +
+        `✅ Payment: Confirmed (${VIDEO_GENERATION_FEE} USDC)\n` +
+        `⏰ Valid for: 1 hour\n\n` +
         `Please describe the video you want to create:\n\n` +
         `Example: "A monkey dancing in a disco" or "A cat playing with a ball of yarn"`
       );
+      return;
+    }
+
+    // Check Fal AI configuration
+    if (messageContent.startsWith("/check-fal")) {
+      console.log("🔄 Handling Fal AI configuration check");
+      const falKey = process.env.FAL_KEY;
+
+      if (!falKey) {
+        await ctx.sendText(
+          `❌ Fal AI Configuration Issue\n\n` +
+          `🔧 FAL_KEY environment variable not set\n\n` +
+          `To fix this:\n` +
+          `1. Get your API key from https://fal.ai/\n` +
+          `2. Add FAL_KEY=your_api_key_here to your .env file\n` +
+          `3. Restart the agent\n\n` +
+          `Contact support for help with configuration.`
+        );
+      } else {
+        await ctx.sendText(
+          `✅ Fal AI Configuration\n\n` +
+          `🔑 FAL_KEY is set (${falKey.substring(0, 8)}...)\n` +
+          `🤖 @sora commands should work for real AI generation\n` +
+          `🤖 Ready for video generation`
+        );
+      }
       return;
     }
 
@@ -657,7 +777,7 @@ agent.on("text", async (ctx) => {
       const senderAddress = await ctx.getSenderAddress();
 
       if (!senderAddress) {
-        await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
+        await ctx.sendText("❌ Oops! Could not determine your wallet address.");
         return;
       }
 
@@ -667,20 +787,20 @@ agent.on("text", async (ctx) => {
         const agentUsdcBalance = await usdcHandler.getUSDCBalance(agentAddress);
 
         await ctx.sendText(
-          `🔍 **Debug Information**\n\n` +
-          `👤 **Your Address**: ${senderAddress}\n` +
-          `💰 **Your USDC Balance**: ${usdcBalance} USDC\n\n` +
-          `🤖 **Agent Address**: ${agentAddress}\n` +
-          `💰 **Agent USDC Balance**: ${agentUsdcBalance} USDC\n\n` +
-          `💸 **Required Fee**: ${VIDEO_GENERATION_FEE} USDC\n` +
-          `⛽ **Note**: You also need ETH for gas fees!\n\n` +
-          `💡 **Troubleshooting Tips**:\n` +
+          `🔍 Debug Information\n\n` +
+          `👤 Your Address: ${senderAddress}\n` +
+          `💰 Your USDC Balance: ${usdcBalance} USDC\n\n` +
+          `🤖 Agent Address: ${agentAddress}\n` +
+          `💰 Agent USDC Balance: ${agentUsdcBalance} USDC\n\n` +
+          `💸 Required Fee: ${VIDEO_GENERATION_FEE} USDC\n` +
+          `⛽ Note: You also need ETH for gas fees!\n\n` +
+          `💡 Troubleshooting Tips:\n` +
           `• Make sure you have at least 0.001 USDC\n` +
           `• Make sure you have some ETH for gas\n` +
-          `• Try using \`/tx 0.001\` to test payment`
+          `• Try using /tx 0.001 to test payment`
         );
       } catch (error) {
-        await ctx.sendText(`❌ **Oops!** Error checking balances: ${error}`);
+        await ctx.sendText(`❌ Oops! Error checking balances: ${error}`);
       }
       return;
     }
@@ -691,7 +811,7 @@ agent.on("text", async (ctx) => {
       const senderAddress = await ctx.getSenderAddress();
 
       if (!senderAddress) {
-        await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
+        await ctx.sendText("❌ Oops! Could not determine your wallet address.");
         return;
       }
 
@@ -700,9 +820,9 @@ agent.on("text", async (ctx) => {
 
       // Generate test video
       await ctx.sendText(
-        `🎬 **Generating test video...**\n\n` +
-        `📝 **Prompt**: "A monkey dancing in a disco"\n` +
-        `💰 **Payment**: ✅ Confirmed (${VIDEO_GENERATION_FEE} USDC)\n\n` +
+        `🎬 Generating test video...\n\n` +
+        `📝 Prompt: "A monkey dancing in a disco"\n` +
+        `💰 Payment: ✅ Confirmed (${VIDEO_GENERATION_FEE} USDC)\n\n` +
         `⏳ This may take a few minutes...`
       );
 
@@ -711,10 +831,10 @@ agent.on("text", async (ctx) => {
       const testPrompt = "A monkey dancing in a disco";
 
       await ctx.sendText(
-        `🎬 **Your video is ready!**\n\n` +
-        `📝 **Prompt**: "${testPrompt}"\n` +
-        `🔗 **Video**: ${testVideoUrl}\n\n` +
-        `✨ **Thank you for your payment!**`
+        `🎬 Your video is ready!\n\n` +
+        `📝 Prompt: "${testPrompt}"\n` +
+        `🔗 Video: ${testVideoUrl}\n\n` +
+        `✨ Thank you for your payment!`
       );
 
       // Store the video URL for this conversation so it can be shared later
@@ -725,7 +845,7 @@ agent.on("text", async (ctx) => {
       // Add share button after video generation
       await ActionBuilder.create(
         "video-share-menu",
-        "🚀 **Share your amazing video!**"
+        "🚀 Share your amazing video!"
       )
         .add("share-video", "📤 Share Video", "primary")
         .send(ctx);
@@ -739,7 +859,7 @@ agent.on("text", async (ctx) => {
       const senderAddress = await ctx.getSenderAddress();
 
       if (!senderAddress) {
-        await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
+        await ctx.sendText("❌ Oops! Could not determine your wallet address.");
         return;
       }
 
@@ -759,9 +879,9 @@ agent.on("text", async (ctx) => {
 
       // Generate the video
       await ctx.sendText(
-        `🎬 **Generating your video...**\n\n` +
-        `📝 **Prompt**: "A monkey dancing in a disco"\n` +
-        `💰 **Payment**: ✅ Confirmed (${VIDEO_GENERATION_FEE} USDC)\n\n` +
+        `🎬 Generating your video...\n\n` +
+        `📝 Prompt: "A monkey dancing in a disco"\n` +
+        `💰 Payment: ✅ Confirmed (${VIDEO_GENERATION_FEE} USDC)\n\n` +
         `⏳ This may take a few minutes...`
       );
 
@@ -770,10 +890,10 @@ agent.on("text", async (ctx) => {
       const forcePrompt = "A monkey dancing in a disco";
 
       await ctx.sendText(
-        `🎬 **Your video is ready!**\n\n` +
-        `📝 **Prompt**: "${forcePrompt}"\n` +
-        `🔗 **Video**: ${forceVideoUrl}\n\n` +
-        `✨ **Thank you for your payment!**`
+        `🎬 Your video is ready!\n\n` +
+        `📝 Prompt: "${forcePrompt}"\n` +
+        `🔗 Video: ${forceVideoUrl}\n\n` +
+        `✨ Thank you for your payment!`
       );
 
       // Store the video URL for this conversation so it can be shared later
@@ -784,7 +904,7 @@ agent.on("text", async (ctx) => {
       // Add share button after video generation
       await ActionBuilder.create(
         "video-share-menu",
-        "🚀 **Share your amazing video!**"
+        "🚀 Share your amazing video!"
       )
         .add("share-video", "📤 Share Video", "primary")
         .send(ctx);
@@ -799,7 +919,7 @@ agent.on("text", async (ctx) => {
       const senderAddress = await ctx.getSenderAddress();
 
       if (!senderAddress) {
-        await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
+        await ctx.sendText("❌ Oops! Could not determine your wallet address.");
         return;
       }
 
@@ -831,6 +951,7 @@ agent.on("text", async (ctx) => {
     // Check if the message is asking for video generation
     if (
       messageContent.toLowerCase().includes("@sora") ||
+      messageContent.toLowerCase().includes("@soratest") ||
       messageContent.toLowerCase().includes("generate video") ||
       messageContent.toLowerCase().includes("create video")
     ) {
@@ -849,14 +970,18 @@ agent.on("text", async (ctx) => {
       // Extract the prompt from the message
       let prompt = messageContent;
 
+      // Check if this is a test command
+      const isTestCommand = messageContent.toLowerCase().includes("@soratest");
+
       // Remove common trigger words to get the actual prompt
       prompt = prompt.replace(/@sora/gi, "").trim();
+      prompt = prompt.replace(/@soratest/gi, "").trim();
       prompt = prompt.replace(/generate video/gi, "").trim();
       prompt = prompt.replace(/create video/gi, "").trim();
 
       if (!prompt) {
         await ctx.sendText(
-          "Please provide a description for the video you want me to generate. Example: '@sora A cat playing with a ball of yarn'",
+          "Please provide a description for the video you want me to generate.\n\nExample: @sora A cat playing with a ball of yarn",
         );
         // Remove video emoji for invalid request
         if (videoCtx.videoReaction?.removeVideoEmoji) {
@@ -867,7 +992,7 @@ agent.on("text", async (ctx) => {
 
       // Check if user has paid for video generation
       if (!senderAddress) {
-        await ctx.sendText("❌ **Oops!** Could not determine your wallet address.");
+        await ctx.sendText("❌ Oops! Could not determine your wallet address.");
         if (videoCtx.videoReaction?.removeVideoEmoji) {
           await videoCtx.videoReaction.removeVideoEmoji();
         }
@@ -880,7 +1005,7 @@ agent.on("text", async (ctx) => {
         console.log(`💰 Payment required for video generation from ${senderAddress}: "${prompt}"`);
 
         // Request payment for video generation
-        await requestVideoPayment(ctx, prompt);
+        await requestVideoPayment(ctx, prompt, isTestCommand);
 
         // Remove video emoji since we're not generating yet
         if (videoCtx.videoReaction?.removeVideoEmoji) {
@@ -892,26 +1017,72 @@ agent.on("text", async (ctx) => {
       // User has paid, proceed with video generation
       console.log(`📝 Video request from ${senderAddress}: "${prompt}" (Payment confirmed)`);
 
-      // Send response immediately
-      await ctx.sendText(
-        `🎬 **Generating Your Video**\n\n` +
-        `✨ **"${prompt}"**\n\n` +
-        `⏳ **Please wait while we create your masterpiece...**`
-      );
+      let videoUrl: string;
 
-      // TODO: Add database logic here to save video request
-      // Example: await saveVideoRequest(senderAddress, prompt, timestamp);
+      if (isTestCommand) {
+        // Use test video for @soratest commands
+        console.log(`🧪 Using test video for @soratest command (hidden debug feature)`);
+        videoUrl = "https://v3b.fal.media/files/b/tiger/49AK4V5zO6RkFNfI-wiHc_ype2StUS.mp4";
 
-      // Send example video for testing (replace with actual generation)
-      const videoUrl = "https://v3b.fal.media/files/b/tiger/49AK4V5zO6RkFNfI-wiHc_ype2StUS.mp4";
+        await ctx.sendText(
+          `🎉 Your test video is ready!\n\n` +
+          `✨ "${prompt}"\n\n` +
+          `🎥 Watch: ${videoUrl}`
+        );
+      } else {
+        // Use Fal AI for @sora commands
+        console.log(`🤖 Using Fal AI for real video generation`);
+        try {
+          videoUrl = await generateVideoWithFalAI(prompt, ctx);
 
-      await ctx.sendText(
-        `🎉 **Your Video is Ready!**\n\n` +
-        `✨ **"${prompt}"**\n\n` +
-        `🎥 **Watch your video:**\n` +
-        `${videoUrl}\n\n` +
-        `🙏 **Thank you for using Sora Video Generator!**`
-      );
+          await ctx.sendText(
+            `🎉 Your video is ready!\n\n` +
+            `✨ "${prompt}"\n\n` +
+            `🎥 Watch: ${videoUrl}`
+          );
+        } catch (error: any) {
+          console.error("❌ Fal AI generation failed:", error);
+
+          // Provide fallback to test video for authentication issues
+          const isAuthError = error.message?.includes("authentication") || error.message?.includes("FAL_KEY");
+
+          if (isAuthError) {
+            await ctx.sendText(
+              `❌ Fal AI authentication failed.\n\n` +
+              `🔧 Please add your FAL_KEY to the .env file.\n\n` +
+              `For now, here's a test video instead:\n\n` +
+              `🎥 Watch: https://v3b.fal.media/files/b/tiger/49AK4V5zO6RkFNfI-wiHc_ype2StUS.mp4\n\n` +
+              `Please try again later.`
+            );
+
+            // Store the test video URL so sharing still works
+            const conversationId = ctx.conversation.id;
+            conversationVideoUrls.set(conversationId, {
+              url: "https://v3b.fal.media/files/b/tiger/49AK4V5zO6RkFNfI-wiHc_ype2StUS.mp4",
+              prompt
+            });
+
+            // Add share button for the fallback video
+            await ActionBuilder.create(
+              "video-share-menu",
+              "🚀 Share your test video!"
+            )
+              .add("share-video", "📤 Share Video", "primary")
+              .send(ctx);
+          } else {
+            await ctx.sendText(
+              `❌ Sorry, there was an error generating your video.\n\n` +
+              `Please try again later.`
+            );
+          }
+
+          // Remove video emoji on error
+          if (videoCtx.videoReaction?.removeVideoEmoji) {
+            await videoCtx.videoReaction.removeVideoEmoji();
+          }
+          return;
+        }
+      }
 
       // Store the video URL for this conversation so it can be shared later
       const conversationId = ctx.conversation.id;
@@ -921,7 +1092,7 @@ agent.on("text", async (ctx) => {
       // Add share button after video generation
       await ActionBuilder.create(
         "video-share-menu",
-        "🚀 **Share your amazing video!**"
+        "🚀 Share your amazing video!"
       )
         .add("share-video", "📤 Share Video", "primary")
         .send(ctx);
@@ -943,16 +1114,16 @@ agent.on("text", async (ctx) => {
         console.error("Error showing main menu:", menuError);
         // Fallback to simple text response
         await ctx.sendText(
-          `🎬 **Sora Video Generator**\n\n` +
+          `🎬 Sora Video Generator\n\n` +
           `✨ Create amazing videos with AI\n` +
           `💰 Only ${VIDEO_GENERATION_FEE} USDC per video\n\n` +
-          `**How to use:**\n` +
-          `Type \`@sora your idea\` to get started!\n\n` +
-          `**Examples:**\n` +
+          `How to use:\n` +
+          `Type @sora your idea to generate videos\n\n` +
+          `Examples:\n` +
           `• @sora A cat playing with yarn\n` +
           `• @sora A sunset over the ocean\n` +
           `• @sora A robot dancing\n\n` +
-          `**Commands:** /status • /balance • /tx <amount>`,
+          `Commands: /status • /balance • /tx <amount> • /check-fal`,
         );
       }
     }
