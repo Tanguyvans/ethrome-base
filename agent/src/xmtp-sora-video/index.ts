@@ -107,10 +107,10 @@ function consumePayment(senderAddress: string) {
   paymentStatus.delete(senderAddress);
 }
 
-// Helper function to generate video using Fal AI
+// Helper function to generate video using Veo 3.1 Fast
 async function generateVideoWithFalAI(prompt: string, ctx: MessageContext): Promise<string> {
   try {
-    console.log(`🎬 Starting Fal AI video generation for prompt: "${prompt}"`);
+    console.log(`🎬 Starting Veo 3.1 Fast video generation for prompt: "${prompt}"`);
 
     // Check if Fal AI is properly configured
     const falKey = process.env.FAL_KEY;
@@ -120,14 +120,20 @@ async function generateVideoWithFalAI(prompt: string, ctx: MessageContext): Prom
 
     // Send initial status message
     await ctx.sendText(
-      `🎬 Generating your video with AI...\n\n` +
+      `🎬 Generating your video with Veo 3.1 Fast...\n\n` +
       `✨ "${prompt}"\n\n` +
-      `⏳ This may take 2-3 minutes, please wait...`
+      `⏳ This may take 1-2 minutes, please wait...`
     );
 
-    const result = await fal.subscribe("fal-ai/sora-2/text-to-video", {
+    const result = await fal.subscribe("fal-ai/veo3.1/fast", {
       input: {
-        prompt: prompt
+        prompt: prompt,
+        aspect_ratio: "16:9",
+        duration: "8s",
+        enhance_prompt: true,
+        auto_fix: true,
+        resolution: "720p",
+        generate_audio: true
       },
       logs: true,
       onQueueUpdate: (update) => {
@@ -137,32 +143,32 @@ async function generateVideoWithFalAI(prompt: string, ctx: MessageContext): Prom
       },
     });
 
-    console.log("Fal AI result:", result.data);
-    console.log("Fal AI request ID:", result.requestId);
+    console.log("Veo 3.1 Fast result:", result.data);
+    console.log("Veo 3.1 Fast request ID:", result.requestId);
 
     // Extract video URL from result
     const videoUrl = result.data?.video?.url;
     if (!videoUrl) {
-      throw new Error("No video URL returned from Fal AI");
+      throw new Error("No video URL returned from Veo 3.1 Fast");
     }
 
     console.log(`✅ Video generated successfully: ${videoUrl}`);
     return videoUrl;
 
   } catch (error: any) {
-    console.error("❌ Error generating video with Fal AI:", error);
+    console.error("❌ Error generating video with Veo 3.1 Fast:", error);
 
     // Provide specific error messages based on error type
     if (error.status === 401) {
       throw new Error("Fal AI authentication failed. Please check your FAL_KEY in the .env file.");
     } else if (error.status === 403) {
-      throw new Error("Access denied to Fal AI Sora-2. Please check your subscription or API key permissions.");
+      throw new Error("Access denied to Fal AI Veo 3.1. Please check your subscription or API key permissions.");
     } else if (error.status === 429) {
       throw new Error("Fal AI rate limit exceeded. Please try again in a few minutes.");
     } else if (error.message?.includes("FAL_KEY")) {
       throw error; // Re-throw our custom message
     } else {
-      throw new Error(`Fal AI error: ${error.message || "Unknown error occurred"}`);
+      throw new Error(`Veo 3.1 Fast error: ${error.message || "Unknown error occurred"}`);
     }
   }
 }
@@ -296,7 +302,7 @@ const transactionReferenceMiddleware: AgentMiddleware = async (ctx, next) => {
             );
           } else {
             // Use Fal AI for @sora commands
-            console.log(`🤖 Using Fal AI for real video generation in transaction middleware`);
+            console.log(`🤖 Using Veo 3.1 Fast for real video generation in transaction middleware`);
             try {
               videoUrl = await generateVideoWithFalAI(pendingVideoRequest, ctx);
 
@@ -306,7 +312,7 @@ const transactionReferenceMiddleware: AgentMiddleware = async (ctx, next) => {
                 `🎥 Watch: ${videoUrl}`
               );
             } catch (error: any) {
-              console.error("❌ Fal AI generation failed in transaction middleware:", error);
+              console.error("❌ Veo 3.1 Fast generation failed in transaction middleware:", error);
 
               // Provide fallback to test video for authentication issues
               const isAuthError = error.message?.includes("authentication") || error.message?.includes("FAL_KEY");
@@ -314,7 +320,7 @@ const transactionReferenceMiddleware: AgentMiddleware = async (ctx, next) => {
               if (isAuthError) {
                 videoUrl = "https://v3b.fal.media/files/b/tiger/49AK4V5zO6RkFNfI-wiHc_ype2StUS.mp4";
                 await ctx.sendText(
-                  `❌ Fal AI authentication failed.\n\n` +
+                  `❌ Veo 3.1 Fast authentication failed.\n\n` +
                   `🔧 Please add your FAL_KEY to the .env file.\n\n` +
                   `For now, here's a test video instead:\n\n` +
                   `🎉 Your test video is ready!\n\n` +
@@ -950,8 +956,8 @@ agent.on("text", async (ctx) => {
 
     // Check if the message is asking for video generation
     if (
-      messageContent.toLowerCase().includes("@sora") ||
-      messageContent.toLowerCase().includes("@soratest") ||
+      messageContent.toLowerCase().includes("@clipchain") ||
+      messageContent.toLowerCase().includes("@clipchaintest") ||
       messageContent.toLowerCase().includes("generate video") ||
       messageContent.toLowerCase().includes("create video")
     ) {
@@ -971,17 +977,17 @@ agent.on("text", async (ctx) => {
       let prompt = messageContent;
 
       // Check if this is a test command
-      const isTestCommand = messageContent.toLowerCase().includes("@soratest");
+      const isTestCommand = messageContent.toLowerCase().includes("@clipchaintest");
 
       // Remove common trigger words to get the actual prompt
-      prompt = prompt.replace(/@sora/gi, "").trim();
-      prompt = prompt.replace(/@soratest/gi, "").trim();
+      prompt = prompt.replace(/@clipchain/gi, "").trim();
+      prompt = prompt.replace(/@clipchaintest/gi, "").trim();
       prompt = prompt.replace(/generate video/gi, "").trim();
       prompt = prompt.replace(/create video/gi, "").trim();
 
       if (!prompt) {
         await ctx.sendText(
-          "Please provide a description for the video you want me to generate.\n\nExample: @sora A cat playing with a ball of yarn",
+          "Please provide a description for the video you want me to generate.\n\nExample: @clipchain A cat playing with a ball of yarn",
         );
         // Remove video emoji for invalid request
         if (videoCtx.videoReaction?.removeVideoEmoji) {
@@ -1031,7 +1037,7 @@ agent.on("text", async (ctx) => {
         );
       } else {
         // Use Fal AI for @sora commands
-        console.log(`🤖 Using Fal AI for real video generation`);
+        console.log(`🤖 Using Veo 3.1 Fast for real video generation`);
         try {
           videoUrl = await generateVideoWithFalAI(prompt, ctx);
 
@@ -1041,14 +1047,14 @@ agent.on("text", async (ctx) => {
             `🎥 Watch: ${videoUrl}`
           );
         } catch (error: any) {
-          console.error("❌ Fal AI generation failed:", error);
+          console.error("❌ Veo 3.1 Fast generation failed:", error);
 
           // Provide fallback to test video for authentication issues
           const isAuthError = error.message?.includes("authentication") || error.message?.includes("FAL_KEY");
 
           if (isAuthError) {
             await ctx.sendText(
-              `❌ Fal AI authentication failed.\n\n` +
+              `❌ Veo 3.1 Fast authentication failed.\n\n` +
               `🔧 Please add your FAL_KEY to the .env file.\n\n` +
               `For now, here's a test video instead:\n\n` +
               `🎥 Watch: https://v3b.fal.media/files/b/tiger/49AK4V5zO6RkFNfI-wiHc_ype2StUS.mp4\n\n` +
