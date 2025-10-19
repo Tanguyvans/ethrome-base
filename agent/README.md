@@ -1,112 +1,188 @@
-# XMTP agent examples
+# XMTP ClipChain Video Generator Agent
 
-These example agents serve as a starting point for building your own agents. They are built with the [`agent-sdk`](https://github.com/xmtp/xmtp-js/tree/main/sdks/agent-sdk) and run on the [XMTP](https://docs.xmtp.org/) network.
+A production-ready XMTP agent that generates AI videos using Google's Veo 3.1 Fast model. Users can create videos through natural language prompts and pay with USDC on Base network.
 
-- [xmtp-gm](/examples/xmtp-gm/): A simple agent that replies to all text messages with "gm"
-- [xmtp-gpt](/examples/xmtp-gpt/): An example using GPT API's to answer messages
-- [xmtp-mini-app](/examples/xmtp-mini-app/): An example using mini app to access group members
-- [xmtp-gated-group](/examples/xmtp-gated-group/): Add members to a group based on arbitrary criteria
-- [xmtp-coinbase-agentkit](/examples/xmtp-coinbase-agentkit/): Agent that uses a CDP for gasless USDC on base
-- [xmtp-domain-resolver](/examples/xmtp-domain-resolver/): Resolve ens user tags in group messages
-- [xmtp-transactions](/examples/xmtp-transactions/): Allow transactions between users and agents
-- [xmtp-gaia](/examples/xmtp-gaia/): This example uses a [Gaia](https://docs.gaianet.ai) API
-- [xmtp-smart-wallet](/examples/xmtp-smart-wallet/): Agent that uses a smart wallet to send messages
-- [xmtp-attachments](/examples/xmtp-attachments/): Agent that sends and receives images
-- [xmtp-inline-actions](/examples/xmtp-inline-actions/): An example using inline actions (dynamic buttons)
-- [xmtp-thinking-reaction](/examples/xmtp-thinking-reaction/): Agent that reacts to messages with a thinking emoji
-- [xmtp-queue-dual-client](/examples/xmtp-queue-dual-client/): Agent that uses two clients to send and receive messages
-- [xmtp-welcome-message](/examples/xmtp-welcome-message/): Agent that sends a welcome message when its added and to new members
+## Live Agent
 
-> Visit [Miniapps in XMTP](https://xmtp.org/miniapps) to explore the latest agents and mini-apps.
+**Agent Address**: `clipchain.base.eth` (Base Name)
+**ENS Name**: `clipchain.eth` (Ethereum Name Service)
+**Deployment**: Railway (Production)
+**Status**: ✅ Live and operational
 
-### Vibe coding
+## Quick Demo
 
-See these [Cursor rules](/.cursor) for vibe coding with XMTP using best practices.
+1. Open Base App or any XMTP-compatible client
+2. Message: `clipchain.base.eth` or `clipchain.eth`
+3. Send: `@clipchain.base.eth A cat playing with a ball of yarn`
+4. Pay 0.001 USDC and receive your AI-generated video!
 
-```bash
-Prompt: lets create an example that gets a number and returns its 2x multiple (use claude max)
-```
+## Technology Stack
 
-### Run an example agent
+**Core Technologies:**
+- **XMTP Agent SDK**: Event-driven messaging framework
+- **Google Veo 3.1 Fast**: AI video generation via Fal AI API
+- **Base Network**: USDC payments and transaction handling
+- **Node.js/TypeScript**: Runtime and development environment
+- **Railway**: Cloud deployment and hosting
 
-```bash
-# git clone repo
-git clone https://github.com/ephemeraHQ/xmtp-agent-examples.git
-# go to the folder
-cd xmtp-agent-examples
-# install packages
-yarn
-# generate random xmtp keys (optional)
-yarn gen:keys
-# run the example
-yarn dev
-```
+**Payment System:**
+- **USDC on Base**: Cryptocurrency payments (0.001 USDC per video)
+- **Time-based access**: 1-hour payment validity for multiple generations
+- **Transaction verification**: Real-time payment confirmation
 
-### Set environment variables
+**User Experience:**
+- **Interactive buttons**: XMTP inline actions for seamless navigation
+- **Natural language**: Simple text prompts like `@clipchain.base.eth [description]`
+- **Real-time updates**: Progress indicators and status messages
+- **Cross-platform**: Works on Base App, XMTP Chat, and compatible clients
 
-To run an example, you must create a `.env` file with the following variables:
+## Key Features
 
-```bash
-XMTP_WALLET_KEY= # the private key of the wallet
-XMTP_DB_ENCRYPTION_KEY= # encryption key for the local database
-XMTP_ENV=dev # local, dev, production
-```
+- 🎬 **AI Video Generation**: Create videos from text prompts using Veo 3.1 Fast
+- 💳 **USDC Payments**: Pay-per-video model on Base network
+- ⚡ **Real-time Processing**: Live status updates and progress tracking
+- 🔗 **Direct Downloads**: Instant access to generated videos
+- 🎭 **Interactive UI**: Button-based navigation and commands
+- 💰 **Balance Management**: Built-in payment status and transaction history
 
-### Generate random XMTP keys
+## Development Process
 
-Use this script to generate random XMTP keys:
+### 1. Development Setup
 
 ```bash
+# Clone and setup
+cd examples/xmtp-sora-video
+yarn install
 yarn gen:keys
 ```
 
-> [!WARNING]
-> Running the `gen:keys` command will append keys to your existing `.env` file.
-
-### Revoke installations
-
-You can revoke old installations by running:
+### 2. Environment Configuration
 
 ```bash
-# you can get your values from terminal logs
-yarn revoke <inbox-id> <installations-to-exclude>
+# Required environment variables
+XMTP_ENV=dev                    # Network environment
+XMTP_WALLET_KEY=0x...          # Agent wallet private key
+XMTP_DB_ENCRYPTION_KEY=...     # Database encryption key
+FAL_KEY=your_fal_api_key       # Fal AI API key
+NETWORK_ID=base-sepolia        # USDC network
 ```
 
-### Enable debug mode
+### 3. Testing Workflow
 
-You can enable debug mode by adding the following to your `.env` file:
-
+**Development Testing:**
 ```bash
-XMTP_FORCE_DEBUG=true
-XMTP_FORCE_DEBUG_LEVEL=warn # debug, info, warn, error
+yarn dev                       # Start agent locally
 ```
 
-> This will print additional information to the console.
+**XMTP Chat Testing:**
+1. Go to https://xmtp.chat
+2. Connect wallet and switch to Dev environment
+3. Message agent's public address
+4. Test functionality and verify responses
 
-### Talk to your agent
+**Production Testing:**
+```bash
+XMTP_ENV=production           # Switch to production
+```
 
-Try out the examples using [xmtp.chat](https://xmtp.chat), the official playground for agents.
+**Base App Testing:**
+1. Open Base App mobile app
+2. Start conversation with agent address
+3. Verify full functionality in production environment
 
-![](/examples/xmtp-gm/screenshot.png)
+### 4. Agent Identity Setup
 
-### Run a local XMTP network (Optional)
+**Base Name Registration:**
+1. Import agent wallet to Base App extension
+2. Visit https://base.org/names
+3. Purchase `clipchain.base.eth` basename
+4. Set as primary name for agent
 
-`dev` and `production` networks are hosted by XMTP, while you can run your own `local` network.
+**ENS Registration:**
+- Register `clipchain.eth` on Ethereum Name Service
+- Maps to agent wallet for cross-platform compatibility
 
-1. Install Docker
+### 5. Production Deployment
 
-2. Start the XMTP service and database
+**Railway Deployment:**
+- Connect GitHub repository to Railway
+- Configure environment variables in dashboard
+- Deploy with automatic scaling and monitoring
+- Agent accessible via `clipchain.base.eth` and `clipchain.eth`
 
-   ```bash
-   ./dev/up
-   ```
+## How It Works
 
-3. Change the `.env` file to use the `local` network
+### User Interaction Flow
 
-   ```bash
-   XMTP_ENV = local
-   ```
+1. **Start Conversation**: Message `clipchain.base.eth` or `clipchain.eth`
+2. **Request Video**: Send `@clipchain.base.eth [your video description]`
+3. **Payment**: Pay 0.001 USDC (valid for 1 hour)
+4. **Generation**: Agent creates video using Veo 3.1 Fast AI
+5. **Delivery**: Receive direct download link
 
-### Deploy your own agent
+### Supported Commands
 
-See how to build and deploy [your own production-grade agent](https://docs.xmtp.org/agents/deploy/deploy-agent) with XMTP.
+**Video Generation:**
+```
+@clipchain.base.eth A cat playing with a ball of yarn
+@clipchain.base.eth A sunset over the ocean
+@clipchain.base.eth A robot dancing in a futuristic city
+```
+
+**Payment Management:**
+```
+/status          # Check payment status and time remaining
+/balance         # Check USDC balance
+/tx 0.001        # Send payment transaction
+```
+
+### Interactive Interface
+
+The agent provides a rich button-based interface:
+- **🎬 Generate Video** - Video generation instructions
+- **💳 Payments** - USDC payment management
+- **🏆 Leaderboard** - Community video showcase
+- **📺 Video Feed** - Browse generated videos
+
+### Example Video Prompts
+
+```
+@clipchain.base.eth A dramatic Hollywood breakup scene at dusk on a quiet suburban street
+@clipchain.base.eth A futuristic city with flying cars and neon lights
+@clipchain.base.eth A peaceful forest with sunlight filtering through the trees
+@clipchain.base.eth A chef preparing a gourmet meal in a modern kitchen
+```
+
+## Technical Specifications
+
+**Video Output:**
+- **Resolution**: 720p
+- **Aspect Ratio**: 16:9
+- **Duration**: 4 seconds
+- **Format**: MP4
+
+**API Integration:**
+- **Fal AI Veo 3.1 Fast**: [API Documentation](https://fal.ai/models/fal-ai/veo3.1/fast/api)
+- **Base Network**: USDC transaction handling
+- **XMTP Protocol**: Decentralized messaging
+
+## Production Status
+
+**Deployment**: ✅ Live on Railway
+**Monitoring**: Real-time logs and error tracking
+**Uptime**: 24/7 availability
+**Scalability**: Auto-scaling based on demand
+
+**Agent Identity:**
+- **Base Name**: `clipchain.base.eth`
+- **ENS Name**: `clipchain.eth`
+- **Network**: Base (Production)
+- **Wallet**: Secure key management via environment variables
+
+## Architecture
+
+Built with modern web3 principles:
+- **Decentralized**: No central server dependency
+- **Cryptocurrency Native**: USDC payments on Base
+- **Cross-Platform**: Works on any XMTP-compatible client
+- **User-Owned**: Users control their data and payments
