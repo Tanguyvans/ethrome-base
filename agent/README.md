@@ -7,10 +7,10 @@ This README explains the agent. We also have a mini app where you can create AI-
 
 ## Live Agent
 
-**Agent Address**: `clipchain.base.eth` (Base Name)
-**ENS Name**: `clipchain.eth` (Ethereum Name Service)
-**Deployment**: Railway (Production)
-**Status**: ✅ Live and operational
+- **Agent Address**: `clipchain.base.eth` (Base Name)
+- **ENS Name**: `clipchain.eth` (Ethereum Name Service)
+- **Deployment**: Railway (Production)
+- **Status**: ✅ Live and operational
 
 
 
