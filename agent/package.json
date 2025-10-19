@@ -20,9 +20,11 @@
     "@xmtp/agent-sdk": "1.1.7"
   },
   "dependencies": {
+    "@fal-ai/client": "^1.7.0",
     "@xmtp/agent-sdk": "1.1.7",
     "@xmtp/content-type-reaction": "*",
-    "@fal-ai/client": "^1.7.0"
+    "@xmtp/content-type-transaction-reference": "^2.0.2",
+    "viem": "^2.38.3"
   },
   "devDependencies": {
     "@eslint/compat": "^1.2.6",
